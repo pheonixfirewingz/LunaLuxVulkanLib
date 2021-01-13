@@ -17,12 +17,22 @@ namespace LunaLuxVulkanLib
         VkInstance instance;
         VkDevice device;
         VkSurfaceKHR  surface;
+        VkPhysicalDeviceProperties properties;
         VkSwapchainKHR swapchain;
         VkQueue graphicQueue,presentQueue;
-        std::vector<const char*> instextend;
     public:
         void createContext(bool,LunaLuxWindowLib::Window*);
         void destroyContext(bool);
+
+        [[maybe_unused]] [[nodiscard]] const VkInstance_T *getInstance() const;
+
+        [[maybe_unused]] [[nodiscard]] const VkDevice_T *getDevice() const;
+
+        [[maybe_unused]] [[nodiscard]] const VkSurfaceKHR_T *getSurface() const;
+
+        [[maybe_unused]] [[nodiscard]] const VkPhysicalDeviceProperties &getProperties() const;
+
+        [[maybe_unused]] [[nodiscard]] const VkSwapchainKHR_T *getSwapchain() const;
     };
 };
 #endif //GITIGNORE_CONTEXTINTERFACE_H

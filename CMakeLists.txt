@@ -12,7 +12,7 @@ add_library(LunaLuxVulkanLib STATIC
             Src/Context/ContextInterface.h
             Src/Common/Utils.h
             Src/Context/GPU.cpp
-            Src/Context/GPU.h)
+            Src/Context/GPU.h Src/Context/Debug.cpp Src/Context/Debug.h)
 
 target_link_libraries(LunaLuxVulkanLib vulkan-1.lib)
 link_directories(C:\\VulkanSDK\\1.2.162.0\\Lib)
