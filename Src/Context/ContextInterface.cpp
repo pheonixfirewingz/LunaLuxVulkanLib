@@ -14,6 +14,7 @@ namespace LunaLuxVulkanLib
 
     void ContextInterface::createContext(bool debug, LunaLuxWindowLib::Window * window)
     {
+        auto[width,height] = window->GetWindowSize();
         {
             std::vector<const char *> instextend;
 
@@ -77,7 +78,6 @@ namespace LunaLuxVulkanLib
             debug_wrapper(debug, vkCreateInstance(&inst_info, nullptr, &instance))
         }
         if(debug) createDebug(instance);
-
         {
             std::vector<const char *> devextend;
             devextend.push_back( VK_KHR_SWAPCHAIN_EXTENSION_NAME );
@@ -153,7 +153,6 @@ namespace LunaLuxVulkanLib
                 debug_wrapper(debug, vkGetPhysicalDeviceSurfacePresentModesKHR( p_device ,surface, &present_mode_count, present_mode_list.data() ) )
                 for( auto m : present_mode_list ) if( m == VK_PRESENT_MODE_MAILBOX_KHR ) present_mode = m;
             }
-            auto[width,height] = window->GetWindowSize();
             VkSwapchainCreateInfoKHR swapchain_create_info{};
             swapchain_create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
             swapchain_create_info.surface = surface;
@@ -175,7 +174,7 @@ namespace LunaLuxVulkanLib
 
             debug_wrapper(debug, vkCreateSwapchainKHR(device, &swapchain_create_info, nullptr, &swapchain))
 
-            uint32_t ImageCount;
+
             debug_wrapper(debug, vkGetSwapchainImagesKHR(device, swapchain, &ImageCount, nullptr))
             swapChain_images.resize(ImageCount);
             swapChain_image_views.resize(ImageCount);
@@ -202,7 +201,91 @@ namespace LunaLuxVulkanLib
             }
         }
         {
-            //TODO: create depth stencil image
+            bool		stencilAvailable	= false;
+            {
+                std::vector<VkFormat> try_formats
+                {
+                        VK_FORMAT_D32_SFLOAT_S8_UINT,
+                        VK_FORMAT_D24_UNORM_S8_UINT,
+                        VK_FORMAT_D16_UNORM_S8_UINT,
+                        VK_FORMAT_D32_SFLOAT,
+                        VK_FORMAT_D16_UNORM
+                };
+                for( auto f : try_formats )
+                {
+                    VkFormatProperties format_properties {};
+                    vkGetPhysicalDeviceFormatProperties( p_device, f, &format_properties );
+                    if( format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ) {
+                        depthFormat = f;
+                        break;
+                    }
+                }
+                if( depthFormat == VK_FORMAT_UNDEFINED ) throw std::runtime_error("Depth stencil format not selected." );
+
+                if( ( depthFormat == VK_FORMAT_D32_SFLOAT_S8_UINT ) || ( depthFormat == VK_FORMAT_D24_UNORM_S8_UINT ) ||
+                    ( depthFormat == VK_FORMAT_D16_UNORM_S8_UINT ) || ( depthFormat == VK_FORMAT_S8_UINT ) )
+                    stencilAvailable = true;
+            }
+
+            VkImageCreateInfo image_create_info {};
+            image_create_info.sType					= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            image_create_info.flags					= 0;
+            image_create_info.imageType				= VK_IMAGE_TYPE_2D;
+            image_create_info.format				= depthFormat;
+            image_create_info.extent.width			= width;
+            image_create_info.extent.height			= height;
+            image_create_info.extent.depth			= 1;
+            image_create_info.mipLevels				= 1;
+            image_create_info.arrayLayers			= 1;
+            image_create_info.samples				= VK_SAMPLE_COUNT_1_BIT;
+            image_create_info.tiling				= VK_IMAGE_TILING_OPTIMAL;
+            image_create_info.usage					= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            image_create_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
+            image_create_info.queueFamilyIndexCount	= VK_QUEUE_FAMILY_IGNORED;
+            image_create_info.pQueueFamilyIndices	= nullptr;
+            image_create_info.initialLayout			= VK_IMAGE_LAYOUT_UNDEFINED;
+
+            debug_wrapper(debug, vkCreateImage( device, &image_create_info, nullptr, &depthImage ) )
+
+            VkMemoryRequirements image_memory_requirements {};
+            vkGetImageMemoryRequirements( device, depthImage, &image_memory_requirements );
+
+            uint32_t memory_index = 0;
+            VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
+            vkGetPhysicalDeviceMemoryProperties(p_device,&deviceMemoryProperties);
+
+            for(int i = 0; i < deviceMemoryProperties.memoryTypeCount; i++) if(image_memory_requirements.memoryTypeBits & (1 << i))
+                if((deviceMemoryProperties.memoryTypes[ 1 ].propertyFlags & VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                    == VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                {
+                    memory_index = i;
+                    break;
+                }
+
+            VkMemoryAllocateInfo memory_allocate_info {};
+            memory_allocate_info.sType				= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            memory_allocate_info.allocationSize		= image_memory_requirements.size;
+            memory_allocate_info.memoryTypeIndex	= memory_index;
+
+            debug_wrapper(debug, vkAllocateMemory( device, &memory_allocate_info, nullptr, &depthImageDeviceMemory ) )
+            debug_wrapper(debug, vkBindImageMemory( device, depthImage, depthImageDeviceMemory, 0 ) )
+
+            VkImageViewCreateInfo image_view_create_info {};
+            image_view_create_info.sType				= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            image_view_create_info.image				= depthImage;
+            image_view_create_info.viewType				= VK_IMAGE_VIEW_TYPE_2D;
+            image_view_create_info.format				= depthFormat;
+            image_view_create_info.components.r			= VK_COMPONENT_SWIZZLE_IDENTITY;
+            image_view_create_info.components.g			= VK_COMPONENT_SWIZZLE_IDENTITY;
+            image_view_create_info.components.b			= VK_COMPONENT_SWIZZLE_IDENTITY;
+            image_view_create_info.components.a			= VK_COMPONENT_SWIZZLE_IDENTITY;
+            image_view_create_info.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_DEPTH_BIT | ( stencilAvailable ? VK_IMAGE_ASPECT_STENCIL_BIT : 0 );
+            image_view_create_info.subresourceRange.baseMipLevel	= 0;
+            image_view_create_info.subresourceRange.levelCount		= 1;
+            image_view_create_info.subresourceRange.baseArrayLayer	= 0;
+            image_view_create_info.subresourceRange.layerCount		= 1;
+
+            debug_wrapper(debug, vkCreateImageView( device, &image_view_create_info, nullptr, &depthImageView ) )
         }
     }
 
@@ -213,6 +296,9 @@ namespace LunaLuxVulkanLib
 
     void ContextInterface::destroyContext(bool debug)
     {
+        vkDestroyImageView( device, depthImageView, nullptr );
+        vkFreeMemory( device, depthImageDeviceMemory, nullptr );
+        vkDestroyImage( device, depthImage, nullptr );
         for( auto view : swapChain_image_views ) vkDestroyImageView( device, view, nullptr );
         vkDestroySwapchainKHR(device,swapchain, nullptr);
         vkDestroyDevice(device, nullptr);
@@ -231,29 +317,9 @@ namespace LunaLuxVulkanLib
         return device;
     }
 
-    [[maybe_unused]] const VkPhysicalDeviceProperties &ContextInterface::getProperties() const
-    {
-        return properties;
-    }
-
     [[maybe_unused]] const VkSwapchainKHR ContextInterface::getSwapchain() const
     {
         return swapchain;
-    }
-
-    [[maybe_unused]] const VkPhysicalDeviceFeatures &ContextInterface::getDeviceFeatures() const
-    {
-        return deviceFeatures;
-    }
-
-    [[maybe_unused]] const VkSurfaceCapabilitiesKHR &ContextInterface::getSurfaceCapabilities() const
-    {
-        return surfaceCapabilities;
-    }
-
-    [[maybe_unused]] const VkSurfaceFormatKHR &ContextInterface::getSurfaceFormat() const
-    {
-        return surfaceFormat;
     }
 
     [[maybe_unused]] const VkQueue ContextInterface::getGraphicQueue() const
@@ -264,5 +330,40 @@ namespace LunaLuxVulkanLib
     [[maybe_unused]] uint32_t ContextInterface::getFamilyIndex() const
     {
         return family_index;
+    }
+
+    [[maybe_unused]] const VkImage ContextInterface::getDepthImage() const
+    {
+        return depthImage;
+    }
+
+    [[maybe_unused]] const VkImageView ContextInterface::getDepthImageView() const
+    {
+        return depthImageView;
+    }
+
+    [[maybe_unused]] const std::vector<VkImage> &ContextInterface::getSwapChainImages() const
+    {
+        return swapChain_images;
+    }
+
+    [[maybe_unused]] const std::vector<VkImageView> &ContextInterface::getSwapChainImageViews() const
+    {
+        return swapChain_image_views;
+    }
+
+    [[maybe_unused]] const VkSurfaceFormatKHR &ContextInterface::getSurfaceFormat() const
+    {
+        return surfaceFormat;
+    }
+
+    [[maybe_unused]] VkFormat ContextInterface::getDepthFormat() const
+    {
+        return depthFormat;
+    }
+
+    [[maybe_unused]] uint32_t ContextInterface::getImageCount() const
+    {
+        return ImageCount;
     }
 }

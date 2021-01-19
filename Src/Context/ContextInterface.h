@@ -7,7 +7,7 @@
 //TODO: write documentation
 #include "Interface/Platform.h"
 #include <LunaLuxWindowLib/Window.h>
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 #include <vector>
 namespace LunaLuxVulkanLib
 {
@@ -22,14 +22,14 @@ namespace LunaLuxVulkanLib
         VkPhysicalDeviceFeatures deviceFeatures;
         VkSurfaceCapabilitiesKHR surfaceCapabilities;
         VkSurfaceFormatKHR surfaceFormat;
+        VkFormat depthFormat = VK_FORMAT_UNDEFINED;
+        uint32_t ImageCount = 0;
         uint32_t family_index = 0;
-    public:
-
-
-    private:
-
         VkSwapchainKHR swapchain = nullptr;
         VkQueue graphicQueue = nullptr;
+        VkImage depthImage = nullptr;
+        VkDeviceMemory	depthImageDeviceMemory	= nullptr;
+        VkImageView		depthImageView = nullptr;
         std::vector<VkImage>				swapChain_images;
         std::vector<VkImageView>			swapChain_image_views;
     public:
@@ -44,15 +44,21 @@ namespace LunaLuxVulkanLib
 
         [[maybe_unused]] [[nodiscard]] const VkDevice getDevice() const;
 
-        [[maybe_unused]] [[nodiscard]] const VkPhysicalDeviceProperties &getProperties() const;
-
-        [[maybe_unused]] [[nodiscard]] const VkPhysicalDeviceFeatures &getDeviceFeatures() const;
-
-        [[maybe_unused]] [[nodiscard]] const VkSurfaceCapabilitiesKHR &getSurfaceCapabilities() const;
-
         [[maybe_unused]] [[nodiscard]] const VkSurfaceFormatKHR &getSurfaceFormat() const;
 
+        [[maybe_unused]] [[nodiscard]] VkFormat getDepthFormat() const;
+
         [[maybe_unused]] [[nodiscard]] const VkSwapchainKHR getSwapchain() const;
+
+        [[maybe_unused]] [[nodiscard]] const VkImage getDepthImage() const;
+
+        [[maybe_unused]] [[nodiscard]] const VkImageView getDepthImageView() const;
+
+        [[maybe_unused]] [[nodiscard]] const std::vector<VkImage> &getSwapChainImages() const;
+
+        [[maybe_unused]] [[nodiscard]] const std::vector<VkImageView> &getSwapChainImageViews() const;
+
+        [[maybe_unused]] [[nodiscard]] uint32_t getImageCount() const;
     };
 }
 #endif //GITIGNORE_CONTEXTINTERFACE_H

@@ -7,16 +7,16 @@
 //TODO: write documentation
 #include <LunaLuxWindowLib/Window.h>
 #include <vulkan/vulkan_core.h>
+#include <vector>
 namespace LunaLuxVulkanLib
 {
     void createContext(bool,LunaLuxWindowLib::Window*);
 
     void updateContext(LunaLuxWindowLib::Window*);
 
-    void frameBegin();
+    void frameBegin(VkFence);
 
     void frameSubmit(std::vector<VkSemaphore>,VkSubmitInfo);
-    [[maybe_unused]] [[nodiscard]] const uint32_t getFamilyIndex();
 
     [[maybe_unused]] [[nodiscard]] const VkInstance getInstance();
 

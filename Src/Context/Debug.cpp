@@ -18,12 +18,11 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags,VkDebug
                                              size_t location,int32_t code,const char * layer,const char * msg,void * user_data)
 {
     if(flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) return false;
-    printf("LunaLuxVulkanLib_debugCallback fired:\n");
-    printf("\tlayer that fired callback: %s\n",layer);
-    if(flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) printf("\twarning msg: %s\n",msg);
-    else if(flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) printf("\tdebug msg: %s\n",msg);
-    else if(flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) printf("\tperformance msg: %s\n",msg);
-    else if(flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) printf("\terror msg: %s\n", msg);
+    printf("LunaLuxVulkanLib_debugCallback layer fired: %s\n",layer);
+    if(flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) printf("warning msg:\n %s\n",msg);
+    else if(flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) printf("debug msg:\n %s\n",msg);
+    else if(flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) printf("performance msg:\n %s\n",msg);
+    else if(flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) printf("error msg:\n %s\n", msg);
     return false;
 }
 

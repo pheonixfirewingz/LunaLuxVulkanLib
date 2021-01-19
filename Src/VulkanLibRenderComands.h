@@ -8,6 +8,10 @@
 #include <vulkan/vulkan_core.h>
 namespace LunaLuxVulkanLib
 {
-    VkRenderPassBeginInfo vkClearColour(VkRect2D,float,float,float,float);
+    VkCommandPool vkGenCommandPool(VkCommandPoolCreateFlags flags);
+
+    VkRenderPassBeginInfo vkClearColour(float,float,float,float);
+
+    void vkQueueWaitIdle();
 }
 #endif //GITIGNORE_VULKANLIBRENDERCOMANDS_H
