@@ -44,3 +44,18 @@ void LunaLuxVulkanLib::createWin32Surf(bool debug,VkInstance instance, VkSurface
             debug_wrapper(debug, vkCreateWin32SurfaceKHR(instance, &surface_info, nullptr, surface))
 #endif
 }
+
+void LunaLuxVulkanLib::llegetSurfaceFormat(VkPhysicalDevice p_device, VkSurfaceKHR surface, VkSurfaceFormatKHR * surfaceFormat)
+{
+    uint32_t count = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(p_device, surface, &count, nullptr);
+    if (count == 0) throw std::runtime_error("no surface formats found");
+    std::vector<VkSurfaceFormatKHR> formats(count);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(p_device, surface, &count, formats.data());
+    if (formats[0].format == VK_FORMAT_UNDEFINED)
+    {
+        surfaceFormat->format = VK_FORMAT_B8G8R8A8_UNORM;
+        surfaceFormat->colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+    }
+    else *surfaceFormat = formats[0];
+}

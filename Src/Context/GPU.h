@@ -12,6 +12,7 @@ namespace LunaLuxVulkanLib
 {
     std::vector<VkQueueFamilyProperties> get_vector_list(VkPhysicalDevice);
     VkPhysicalDevice getPDevice(VkInstance);
-    void createWin32Surf(bool,VkInstance instance, VkSurfaceKHR * surface,LunaLuxWindowLib::Window* window);
+    void createWin32Surf(bool,VkInstance, VkSurfaceKHR *,LunaLuxWindowLib::Window*);
+    void llegetSurfaceFormat(VkPhysicalDevice,VkSurfaceKHR,VkSurfaceFormatKHR*);
 }
 #endif //GITIGNORE_GPU_H
