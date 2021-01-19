@@ -9,9 +9,11 @@
 namespace LunaLuxVulkanLib
 {
     VkCommandPool vkGenCommandPool(VkCommandPoolCreateFlags flags);
-
-    VkRenderPassBeginInfo vkClearColour(float,float,float,float);
-
+    VkFence vkCreateFence();
     void vkQueueWaitIdle();
+    VkRenderPassBeginInfo vkClearColour(float,float,float);
+    void vkSetViewport(VkCommandBuffer,float,float);
+    void vkSetScissor(VkCommandBuffer,float,float);
 }
+using namespace LunaLuxVulkanLib;
 #endif //GITIGNORE_VULKANLIBRENDERCOMANDS_H

@@ -24,4 +24,5 @@ namespace LunaLuxVulkanLib
 
     void destroyContext();
 }
+using namespace LunaLuxVulkanLib;
 #endif //GITIGNORE_VULKANLIB_H

@@ -1,6 +1,4 @@
-//
 // Created by luket on 31/12/2020.
-//
 #include <LunaLuxWindowLib/Window.h>
 #include "VulkanLib.h"
 #include "VulkanLibRenderComands.h"
@@ -12,7 +10,7 @@ int main()
     createContext(false,window);
 
     VkCommandPool command_pool = vkGenCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
-                                                                    VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+                                                  VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
     fence = vkCreateFence();
 
     VkCommandBuffer command_buffer					= VK_NULL_HANDLE;
@@ -30,7 +28,6 @@ int main()
 
     while (!window->ShouldClose())
     {
-        auto[width,height]= window->GetWindowSize();
         window->Update(30.0);
         updateContext(window);
         frameBegin(fence);
@@ -43,22 +40,19 @@ int main()
         VkRenderPassBeginInfo render_pass_begin_info = vkClearColour(0.0f, 0.0f, 1.0f);
         vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-        vkSetViewport(command_buffer,(float)width,(float)height);
-        vkSetScissor(command_buffer,(float)width,(float)height);
-
         vkCmdEndRenderPass(command_buffer);
         vkEndCommandBuffer(command_buffer);
 
-            VkSubmitInfo submit_info{};
-            submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submit_info.waitSemaphoreCount = 0;
-            submit_info.pWaitSemaphores = nullptr;
-            submit_info.pWaitDstStageMask = nullptr;
-            submit_info.commandBufferCount = 1;
-            submit_info.pCommandBuffers = &command_buffer;
-            submit_info.signalSemaphoreCount = 1;
-            submit_info.pSignalSemaphores = &render_complete_semaphore;
-            frameSubmit({render_complete_semaphore}, submit_info);
+        VkSubmitInfo submit_info{};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.waitSemaphoreCount = 0;
+        submit_info.pWaitSemaphores = nullptr;
+        submit_info.pWaitDstStageMask = nullptr;
+        submit_info.commandBufferCount = 1;
+        submit_info.pCommandBuffers = &command_buffer;
+        submit_info.signalSemaphoreCount = 1;
+        submit_info.pSignalSemaphores = &render_complete_semaphore;
+        frameSubmit({render_complete_semaphore}, submit_info);
     }
     vkQueueWaitIdle();
     vkDestroyFence(getDevice(),fence, nullptr);

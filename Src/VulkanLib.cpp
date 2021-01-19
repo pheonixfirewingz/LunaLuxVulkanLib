@@ -13,24 +13,20 @@
 namespace LunaLuxVulkanLib
 {
     bool IDebug{false};
-    VkRect2D render_area {};
     VkFence	swapChainFence = nullptr;
     uint32_t currentFrame = 0;
     ContextInterface* context;
     VkRenderPass renderPass = nullptr;
     std::vector<VkFramebuffer> frameBuffers;
     VkSwapchainKHR swapchain;
+    int width = 0,height = 0;
 
     void createContext(bool debug, LunaLuxWindowLib::Window * window)
     {
+        if(debug) printf("WARRING: enabling full runtime debug may cause quirks that are not in non debug runtime "
+                         "set(this is in the FIX ME: list)");
         IDebug = debug;
         context = new ContextInterface();
-
-        auto[width,height] = window->GetWindowSize();
-        render_area.offset.x		= 0;
-        render_area.offset.y		= 0;
-        render_area.extent			= {static_cast<uint32_t>(width),static_cast<uint32_t>(height)};
-
         context->createContext(debug,window);
 
         std::array<VkAttachmentDescription, 2> attachments {};
@@ -77,6 +73,9 @@ namespace LunaLuxVulkanLib
 
         debug_wrapper(debug, vkCreateRenderPass( context->getDevice(), &render_pass_create_info, nullptr, &renderPass ) )
 
+        auto[width_,height_] = window->GetWindowSize();
+        width = width_;
+        height = height_;
         uint32_t ImageCount = context->getImageCount();
         frameBuffers.resize( ImageCount );
         for( uint32_t i=0; i < ImageCount; ++i )
@@ -90,8 +89,8 @@ namespace LunaLuxVulkanLib
             framebuffer_create_info.renderPass		= renderPass;
             framebuffer_create_info.attachmentCount	= attachments.size();
             framebuffer_create_info.pAttachments	= attachments.data();
-            framebuffer_create_info.width			= width;
-            framebuffer_create_info.height			= height;
+            framebuffer_create_info.width			= width_;
+            framebuffer_create_info.height			= height_;
             framebuffer_create_info.layers			= 1;
 
             debug_wrapper(debug, vkCreateFramebuffer( context->getDevice(), &framebuffer_create_info, nullptr, &frameBuffers[ i ] ) )
@@ -101,8 +100,6 @@ namespace LunaLuxVulkanLib
 
     void updateContext(LunaLuxWindowLib::Window * window)
     {
-        auto[width,height] = window->GetWindowSize();
-        render_area.extent = {static_cast<uint32_t>(width),static_cast<uint32_t>(height)};
         context->updateContext(IDebug,window);
     }
 
@@ -150,7 +147,6 @@ namespace LunaLuxVulkanLib
         present_info.pResults				= &present_result;
 
         debug_wrapper(IDebug, vkQueuePresentKHR( context->getGraphicQueue(), &present_info ) )
-        debug_wrapper(IDebug, present_result );
     }
 
     VkCommandPool vkGenCommandPool(VkCommandPoolCreateFlags flags)
@@ -166,23 +162,28 @@ namespace LunaLuxVulkanLib
         return command_pool;
     }
 
-    VkRenderPassBeginInfo vkClearColour(float r, float g, float b, float a)
+    VkRenderPassBeginInfo vkClearColour(float r, float g, float b)
     {
-        std::vector<VkClearValue> clear_values(2);
-        clear_values[ 0 ].depthStencil.depth		= 0.0f;
-        clear_values[ 0 ].depthStencil.stencil		= 0;
-        clear_values[ 1 ].color.float32[ 0 ]		= r;
-        clear_values[ 1 ].color.float32[ 1 ]		= g;
-        clear_values[ 1 ].color.float32[ 2 ]		= b;
-        clear_values[ 1 ].color.float32[ 3 ]		= a;
+
+        VkClearValue clear_values[2];
+        clear_values[0].depthStencil.depth	= 1.0f;
+        clear_values[0].depthStencil.stencil= 0;
+        clear_values[1].color.float32[0] = r;
+        clear_values[1].color.float32[1] = g;
+        clear_values[1].color.float32[2] = b;
+        clear_values[1].color.float32[3] = 1.0f;
 
         VkRenderPassBeginInfo render_pass_begin_info {};
         render_pass_begin_info.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        render_pass_begin_info.pNext                = nullptr;
         render_pass_begin_info.renderPass			= renderPass;
+        render_pass_begin_info.renderArea.offset.x  = 0;
+        render_pass_begin_info.renderArea.offset.y  = 0;
+        render_pass_begin_info.renderArea.extent.width = width;
+        render_pass_begin_info.renderArea.extent.height = height;
+        render_pass_begin_info.clearValueCount		= 2;
+        render_pass_begin_info.pClearValues         = clear_values;
         render_pass_begin_info.framebuffer			= frameBuffers[currentFrame];
-        render_pass_begin_info.renderArea			= render_area;
-        render_pass_begin_info.clearValueCount		= clear_values.size();
-        render_pass_begin_info.pClearValues         = clear_values.data();
 
         return render_pass_begin_info;
     }
@@ -190,5 +191,16 @@ namespace LunaLuxVulkanLib
     void vkQueueWaitIdle()
     {
         debug_wrapper(IDebug, vkQueueWaitIdle(context->getGraphicQueue()))
+    }
+
+    VkFence vkCreateFence()
+    {
+        VkFence fence;
+        VkFenceCreateInfo fenceCreateInfo = {};
+        fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceCreateInfo.pNext = nullptr;
+
+        vkCreateFence(context->getDevice(),&fenceCreateInfo ,nullptr,&fence);
+        return fence;
     }
 }
