@@ -104,14 +104,18 @@ namespace LunaLuxVulkanLib
         return false;
     }
 
-    const VkInstance LunaLuxVulkanLib::getInstance()
-    {
-        return context->getInstance();
-    }
-
+    int external = 0;
     const VkDevice getDevice()
     {
+        external++;
+        printf("getDevice() was called out outside the lib %i times if "
+               "possible try using the wrapper functions provided by LunaLuxVulkanLib\n",external);
         return context->getDevice();
+    }
+
+    const VkRenderPass getRenderPass()
+    {
+        return renderPass;
     }
 
     void destroyContext()
@@ -121,6 +125,32 @@ namespace LunaLuxVulkanLib
         vkDestroyRenderPass(context->getDevice(), renderPass, nullptr );
         vkDestroyFence(context->getDevice(),swapChainFence, nullptr);
         context->destroyContext(IDebug);
+    }
+
+    VkRenderPassBeginInfo vkClearColour(float r, float g, float b)
+    {
+
+        VkClearValue clear_values[2];
+        clear_values[0].depthStencil.depth	= 1.0f;
+        clear_values[0].depthStencil.stencil= 0;
+        clear_values[1].color.float32[0] = r;
+        clear_values[1].color.float32[1] = g;
+        clear_values[1].color.float32[2] = b;
+        clear_values[1].color.float32[3] = 1.0f;
+
+        VkRenderPassBeginInfo render_pass_begin_info {};
+        render_pass_begin_info.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        render_pass_begin_info.pNext                = nullptr;
+        render_pass_begin_info.renderPass			= renderPass;
+        render_pass_begin_info.renderArea.offset.x  = 0;
+        render_pass_begin_info.renderArea.offset.y  = 0;
+        render_pass_begin_info.renderArea.extent.width = width;
+        render_pass_begin_info.renderArea.extent.height = height;
+        render_pass_begin_info.clearValueCount		= 2;
+        render_pass_begin_info.pClearValues         = clear_values;
+        render_pass_begin_info.framebuffer			= frameBuffers[currentFrame];
+
+        return render_pass_begin_info;
     }
 
     void frameBegin(VkFence fence)
@@ -150,11 +180,6 @@ namespace LunaLuxVulkanLib
         debug_wrapper(IDebug, vkQueuePresentKHR( context->getGraphicQueue(), &present_info ) )
     }
 
-    const VkRenderPass getRenderPass()
-    {
-        return renderPass;
-    }
-
     VkCommandPool vkGenCommandPool(VkCommandPoolCreateFlags flags)
     {
         VkCommandPool command_pool;
@@ -168,35 +193,25 @@ namespace LunaLuxVulkanLib
         return command_pool;
     }
 
-    VkRenderPassBeginInfo vkClearColour(float r, float g, float b)
+
+    VkCommandBuffer LunaLuxVulkanLib::vkAllocateCommandBuffers(VkCommandBufferAllocateInfo * bufferAllocateInfo)
     {
-
-        VkClearValue clear_values[2];
-        clear_values[0].depthStencil.depth	= 1.0f;
-        clear_values[0].depthStencil.stencil= 0;
-        clear_values[1].color.float32[0] = r;
-        clear_values[1].color.float32[1] = g;
-        clear_values[1].color.float32[2] = b;
-        clear_values[1].color.float32[3] = 1.0f;
-
-        VkRenderPassBeginInfo render_pass_begin_info {};
-        render_pass_begin_info.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        render_pass_begin_info.pNext                = nullptr;
-        render_pass_begin_info.renderPass			= renderPass;
-        render_pass_begin_info.renderArea.offset.x  = 0;
-        render_pass_begin_info.renderArea.offset.y  = 0;
-        render_pass_begin_info.renderArea.extent.width = width;
-        render_pass_begin_info.renderArea.extent.height = height;
-        render_pass_begin_info.clearValueCount		= 2;
-        render_pass_begin_info.pClearValues         = clear_values;
-        render_pass_begin_info.framebuffer			= frameBuffers[currentFrame];
-
-        return render_pass_begin_info;
+        VkCommandBuffer buffer = {};
+        vkAllocateCommandBuffers(context->getDevice(),bufferAllocateInfo,&buffer);
+        return buffer;
     }
 
     void vkQueueWaitIdle()
     {
         debug_wrapper(IDebug, vkQueueWaitIdle(context->getGraphicQueue()))
+    }
+    VkSemaphore vkGenSemaphore()
+    {
+        VkSemaphore semaphore;
+        VkSemaphoreCreateInfo semaphore_create_info {};
+        semaphore_create_info.sType				= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        vkCreateSemaphore( context->getDevice(), &semaphore_create_info, nullptr, &semaphore );
+        return semaphore;
     }
 
     VkFence vkGenFence()
@@ -230,13 +245,124 @@ namespace LunaLuxVulkanLib
         vkDestroyShaderModule(context->getDevice(),module, nullptr);
     }
 
-    VkPipelineShaderStageCreateInfo vkGenShaderStage(VkShaderModule shaderModule,VkShaderStageFlagBits flags)
+    std::tuple<VkPipeline,VkPipelineLayout> vkGenDefaultPipeline(LunaLuxWindowLib::Window* window,VkPipelineShaderStageCreateInfo shaderStages[],
+                                    VkPipelineVertexInputStateCreateInfo vertexInputInfo,VkPipelineInputAssemblyStateCreateInfo inputAssembly)
     {
-        VkPipelineShaderStageCreateInfo ShaderStageInfo{};
-        ShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        ShaderStageInfo.stage = flags;
-        ShaderStageInfo.module = shaderModule;
-        ShaderStageInfo.pName = "main";
-        return ShaderStageInfo;
+        VkPipeline pipeline = nullptr;
+        VkPipelineLayout pipelineLayout = {};
+        auto[_width_,_height_] = window->GetWindowSize();
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = (float) _width_;
+        viewport.height = (float) _height_;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent.width  = _width_;
+        scissor.extent.height = _height_;
+
+        VkPipelineViewportStateCreateInfo viewportState{};
+        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewportState.viewportCount = 1;
+        viewportState.pViewports = &viewport;
+        viewportState.scissorCount = 1;
+        viewportState.pScissors = &scissor;
+
+        VkPipelineRasterizationStateCreateInfo rasterizer{};
+        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterizer.depthClampEnable = VK_FALSE;
+        rasterizer.rasterizerDiscardEnable = VK_FALSE;
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterizer.lineWidth = 1.0f;
+        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+        rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rasterizer.depthBiasEnable = VK_FALSE;
+
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampling.sampleShadingEnable = VK_FALSE;
+        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        colorBlendAttachment.blendEnable = VK_FALSE;
+
+        VkPipelineColorBlendStateCreateInfo colorBlending{};
+        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlending.logicOpEnable = VK_FALSE;
+        colorBlending.logicOp = VK_LOGIC_OP_COPY;
+        colorBlending.attachmentCount = 1;
+        colorBlending.pAttachments = &colorBlendAttachment;
+        colorBlending.blendConstants[0] = 0.0f;
+        colorBlending.blendConstants[1] = 0.0f;
+        colorBlending.blendConstants[2] = 0.0f;
+        colorBlending.blendConstants[3] = 0.0f;
+
+        VkPipelineDepthStencilStateCreateInfo depthStencil{};
+        depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencil.depthTestEnable = VK_TRUE;
+        depthStencil.depthWriteEnable = VK_TRUE;
+        depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+        depthStencil.depthBoundsTestEnable = VK_FALSE;
+        depthStencil.stencilTestEnable = VK_FALSE;
+
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelineLayoutInfo.setLayoutCount = 0;
+        pipelineLayoutInfo.pushConstantRangeCount = 0;
+
+        if (vkCreatePipelineLayout(context->getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+            throw std::runtime_error("failed to create pipeline layout!");
+
+        VkGraphicsPipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.stageCount = 2;
+        pipelineInfo.pStages = shaderStages;
+        pipelineInfo.pVertexInputState = &vertexInputInfo;
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pViewportState = &viewportState;
+        pipelineInfo.pRasterizationState = &rasterizer;
+        pipelineInfo.pDepthStencilState = &depthStencil;
+        pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.layout = pipelineLayout;
+        pipelineInfo.renderPass = renderPass;
+        pipelineInfo.subpass = 0;
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+        if (vkCreateGraphicsPipelines(context->getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
+            throw std::runtime_error("failed to create graphics pipeline!");
+
+        if(pipeline == nullptr)
+            throw std::runtime_error("failed to create graphics pipeline!");
+        return {pipeline,pipelineLayout};
+    }
+
+    void vkDestroyPipeline(VkPipeline pipe)
+    {
+        vkDestroyPipeline(context->getDevice(),pipe, nullptr);
+    }
+
+    void vkDestroyPipelineLayout(VkPipelineLayout pipe)
+    {
+        vkDestroyPipelineLayout(context->getDevice(), pipe, nullptr);
+    }
+
+    void vkDestroyFence(VkFence fence)
+    {
+        vkDestroyFence(context->getDevice(),fence, nullptr);
+    }
+
+    void vkDestroySemaphore(VkSemaphore semaphore)
+    {
+        vkDestroySemaphore(context->getDevice(),semaphore, nullptr);
+    }
+
+    void vkDestroyCommandPool(VkCommandPool commandPool)
+    {
+        vkDestroyCommandPool(context->getDevice(),commandPool, nullptr);
     }
 }

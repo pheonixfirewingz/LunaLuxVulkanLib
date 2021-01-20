@@ -18,8 +18,6 @@ namespace LunaLuxVulkanLib
 
     void frameSubmit(std::vector<VkSemaphore>,VkSubmitInfo);
 
-    [[maybe_unused]] [[nodiscard]] const VkInstance getInstance();
-
     [[maybe_unused]] [[nodiscard]] const VkDevice getDevice();
 
     [[maybe_unused]] [[nodiscard]] const VkRenderPass getRenderPass();

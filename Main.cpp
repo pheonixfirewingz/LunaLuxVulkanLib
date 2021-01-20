@@ -26,38 +26,37 @@ static std::vector<char> readFile(const std::string& filename)
 int main()
 {
     VkFence	fence = nullptr;
-    VkPipelineLayout pipelineLayout = nullptr;
-    VkPipeline graphicsPipelines = nullptr;
     auto* window = new LunaLuxWindowLib::Window();
     window->Open("Vulkan Library Test 2",NULL,NULL);
-    createContext(true,window);
+    createContext(false,window);
 
     VkCommandPool command_pool = vkGenCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
-                                                                    VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+                                                       VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
     fence = vkGenFence();
 
-    VkCommandBuffer command_buffer					= VK_NULL_HANDLE;
     VkCommandBufferAllocateInfo	command_buffer_allocate_info {};
     command_buffer_allocate_info.sType				= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     command_buffer_allocate_info.commandPool		= command_pool;
     command_buffer_allocate_info.level				= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     command_buffer_allocate_info.commandBufferCount	= 1;
-    vkAllocateCommandBuffers( getDevice(), &command_buffer_allocate_info, &command_buffer );
+    VkCommandBuffer command_buffer = vkAllocateCommandBuffers(&command_buffer_allocate_info);
 
-    VkSemaphore render_complete_semaphore	= VK_NULL_HANDLE;
-    VkSemaphoreCreateInfo semaphore_create_info {};
-    semaphore_create_info.sType				= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    vkCreateSemaphore( getDevice(), &semaphore_create_info, nullptr, &render_complete_semaphore );
+    VkSemaphore render_complete_semaphore = vkGenSemaphore();
 
-    auto vertShaderCode = readFile("vert.spv");
-    auto fragShaderCode = readFile("frag.spv");
+    VkShaderModule vertShaderModule = vkGenShaderModule(readFile("vert.spv"));
+    VkShaderModule fragShaderModule = vkGenShaderModule(readFile("frag.spv"));
 
-    VkShaderModule vertShaderModule = vkGenShaderModule(vertShaderCode);
-    VkShaderModule fragShaderModule = vkGenShaderModule(fragShaderCode);
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
+    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.pName = "main";
 
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo = vkGenShaderStage(vertShaderModule,VK_SHADER_STAGE_VERTEX_BIT);
-
-    VkPipelineShaderStageCreateInfo fragShaderStageInfo = vkGenShaderStage(vertShaderModule,VK_SHADER_STAGE_FRAGMENT_BIT);
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
+    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.pName = "main";
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
@@ -71,102 +70,14 @@ int main()
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-    auto[_width_,_height_] = window->GetWindowSize();
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = (float) _width_;
-    viewport.height = (float) _height_;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    auto[graphicsPipelines,pipelineLayout] = vkGenDefaultPipeline(window,shaderStages,vertexInputInfo,inputAssembly);
 
-    VkRect2D scissor{};
-    scissor.offset = {0, 0};
-    scissor.extent.width  = _width_;
-    scissor.extent.height = _height_;
-
-    VkPipelineViewportStateCreateInfo viewportState{};
-    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportState.viewportCount = 1;
-    viewportState.pViewports = &viewport;
-    viewportState.scissorCount = 1;
-    viewportState.pScissors = &scissor;
-
-    VkPipelineRasterizationStateCreateInfo rasterizer{};
-    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizer.depthClampEnable = VK_FALSE;
-    rasterizer.rasterizerDiscardEnable = VK_FALSE;
-    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-    rasterizer.depthBiasEnable = VK_FALSE;
-
-    VkPipelineMultisampleStateCreateInfo multisampling{};
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
-
-    VkPipelineColorBlendStateCreateInfo colorBlending{};
-    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlending.logicOpEnable = VK_FALSE;
-    colorBlending.logicOp = VK_LOGIC_OP_COPY;
-    colorBlending.attachmentCount = 1;
-    colorBlending.pAttachments = &colorBlendAttachment;
-    colorBlending.blendConstants[0] = 0.0f;
-    colorBlending.blendConstants[1] = 0.0f;
-    colorBlending.blendConstants[2] = 0.0f;
-    colorBlending.blendConstants[3] = 0.0f;
-
-    VkPipelineDepthStencilStateCreateInfo depthStencil{};
-    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencil.depthTestEnable = VK_TRUE;
-    depthStencil.depthWriteEnable = VK_TRUE;
-    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-    depthStencil.depthBoundsTestEnable = VK_FALSE;
-    depthStencil.stencilTestEnable = VK_FALSE;
-
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-
-    if (vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
-        throw std::runtime_error("failed to create pipeline layout!");
-
-    VkGraphicsPipelineCreateInfo pipelineInfo{};
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.stageCount = 2;
-    pipelineInfo.pStages = shaderStages;
-    pipelineInfo.pVertexInputState = &vertexInputInfo;
-    pipelineInfo.pInputAssemblyState = &inputAssembly;
-    pipelineInfo.pViewportState = &viewportState;
-    pipelineInfo.pRasterizationState = &rasterizer;
-    pipelineInfo.pDepthStencilState = &depthStencil;
-    pipelineInfo.pMultisampleState = &multisampling;
-    pipelineInfo.pColorBlendState = &colorBlending;
-    pipelineInfo.layout = pipelineLayout;
-    pipelineInfo.renderPass = getRenderPass();
-    pipelineInfo.subpass = 0;
-    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-
-    if (vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipelines) != VK_SUCCESS)
-        throw std::runtime_error("failed to create graphics pipeline!");
-
-   /* if(graphicsPipelines == nullptr)
-        throw std::runtime_error("failed to create graphics pipeline!");
-    */
     vkDestroyShaderModule(vertShaderModule);
     vkDestroyShaderModule(fragShaderModule);
 
 
     while (!window->ShouldClose())
     {
-
         window->Update(30.0);
         updateContext(window);
         frameBegin(fence);
@@ -176,16 +87,15 @@ int main()
         command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
         vkBeginCommandBuffer(command_buffer, &command_buffer_begin_info);
-        VkRenderPassBeginInfo render_pass_begin_info = vkClearColour(0.0f, 0.0f, 1.0f);
+        VkRenderPassBeginInfo render_pass_begin_info = vkClearColour(0.5f, 0.5f, 0.5f);
         vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
         auto[width,height]= window->GetWindowSize();
         vkSetViewport(command_buffer,(float)width,(float)height);
         vkSetScissor(command_buffer,(float)width,(float)height);
 
-        //vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelines);
-
-        //vkCmdDraw(command_buffer, 3, 1, 0, 0);
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelines);
+        vkCmdDraw(command_buffer, 3, 1, 0, 0);
 
         vkCmdEndRenderPass(command_buffer);
         vkEndCommandBuffer(command_buffer);
@@ -202,11 +112,11 @@ int main()
         frameSubmit({render_complete_semaphore}, submit_info);
     }
     vkQueueWaitIdle();
-    vkDestroyPipeline(getDevice(), graphicsPipelines, nullptr);
-    vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
-    vkDestroyFence(getDevice(),fence, nullptr);
-    vkDestroySemaphore( getDevice(), render_complete_semaphore, nullptr );
-    vkDestroyCommandPool( getDevice(), command_pool, nullptr );
+    vkDestroyPipeline(graphicsPipelines);
+    vkDestroyPipelineLayout(pipelineLayout);
+    vkDestroyFence(fence);
+    vkDestroySemaphore(render_complete_semaphore);
+    vkDestroyCommandPool(command_pool);
     destroyContext();
     return 0;
 }
