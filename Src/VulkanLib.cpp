@@ -98,9 +98,10 @@ namespace LunaLuxVulkanLib
         swapchain = context->getSwapchain();
     }
 
-    void updateContext(LunaLuxWindowLib::Window * window)
+    bool updateContext(LunaLuxWindowLib::Window * window)
     {
         context->updateContext(IDebug,window);
+        return false;
     }
 
     const VkInstance LunaLuxVulkanLib::getInstance()
@@ -149,6 +150,11 @@ namespace LunaLuxVulkanLib
         debug_wrapper(IDebug, vkQueuePresentKHR( context->getGraphicQueue(), &present_info ) )
     }
 
+    const VkRenderPass getRenderPass()
+    {
+        return renderPass;
+    }
+
     VkCommandPool vkGenCommandPool(VkCommandPoolCreateFlags flags)
     {
         VkCommandPool command_pool;
@@ -193,7 +199,7 @@ namespace LunaLuxVulkanLib
         debug_wrapper(IDebug, vkQueueWaitIdle(context->getGraphicQueue()))
     }
 
-    VkFence vkCreateFence()
+    VkFence vkGenFence()
     {
         VkFence fence;
         VkFenceCreateInfo fenceCreateInfo = {};
@@ -202,5 +208,35 @@ namespace LunaLuxVulkanLib
 
         vkCreateFence(context->getDevice(),&fenceCreateInfo ,nullptr,&fence);
         return fence;
+    }
+
+    VkShaderModule vkGenShaderModule(const std::vector<char>& code)
+    {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size();
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+        VkShaderModule shaderModule;
+        VkResult result;
+        if ((result = vkCreateShaderModule(context->getDevice(), &createInfo, nullptr, &shaderModule)) != VK_SUCCESS)
+            printf("shader byteCode compile error: %i\n",result);
+
+        return shaderModule;
+    }
+
+    void vkDestroyShaderModule(VkShaderModule module)
+    {
+        vkDestroyShaderModule(context->getDevice(),module, nullptr);
+    }
+
+    VkPipelineShaderStageCreateInfo vkGenShaderStage(VkShaderModule shaderModule,VkShaderStageFlagBits flags)
+    {
+        VkPipelineShaderStageCreateInfo ShaderStageInfo{};
+        ShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        ShaderStageInfo.stage = flags;
+        ShaderStageInfo.module = shaderModule;
+        ShaderStageInfo.pName = "main";
+        return ShaderStageInfo;
     }
 }

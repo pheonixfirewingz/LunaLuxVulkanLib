@@ -12,7 +12,7 @@ namespace LunaLuxVulkanLib
 {
     void createContext(bool,LunaLuxWindowLib::Window*);
 
-    void updateContext(LunaLuxWindowLib::Window*);
+    bool updateContext(LunaLuxWindowLib::Window*);
 
     void frameBegin(VkFence);
 
@@ -21,6 +21,8 @@ namespace LunaLuxVulkanLib
     [[maybe_unused]] [[nodiscard]] const VkInstance getInstance();
 
     [[maybe_unused]] [[nodiscard]] const VkDevice getDevice();
+
+    [[maybe_unused]] [[nodiscard]] const VkRenderPass getRenderPass();
 
     void destroyContext();
 }
