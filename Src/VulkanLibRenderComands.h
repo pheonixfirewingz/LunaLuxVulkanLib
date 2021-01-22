@@ -10,27 +10,30 @@
 #include <vector>
 namespace LunaLuxVulkanLib
 {
+    //command pool
     VkCommandPool vkGenCommandPool(VkCommandPoolCreateFlags flags);
     VkCommandBuffer vkAllocateCommandBuffers(VkCommandBufferAllocateInfo*);
+    void vkDestroyCommandPool(VkCommandPool);
 
+    //threads
     VkFence vkGenFence();
     VkSemaphore vkGenSemaphore();
     void vkQueueWaitIdle();
+    void vkDestroyFence(VkFence);
+    void vkDestroySemaphore(VkSemaphore);
 
+    //pipeline
     std::tuple<VkPipeline,VkPipelineLayout> vkGenDefaultPipeline(LunaLuxWindowLib::Window*,VkPipelineShaderStageCreateInfo[],VkPipelineVertexInputStateCreateInfo,
                                     VkPipelineInputAssemblyStateCreateInfo);
     VkShaderModule vkGenShaderModule(const std::vector<char>&);
     void vkDestroyShaderModule(VkShaderModule);
+    void vkDestroyPipeline(VkPipeline);
+    void vkDestroyPipelineLayout(VkPipelineLayout);
 
+    //command buffer commands
     VkRenderPassBeginInfo vkClearColour(float,float,float);
     void vkSetViewport(VkCommandBuffer,float,float);
     void vkSetScissor(VkCommandBuffer,float,float);
-
-    void vkDestroyPipeline(VkPipeline);
-    void vkDestroyPipelineLayout(VkPipelineLayout);
-    void vkDestroyFence(VkFence);
-    void vkDestroySemaphore(VkSemaphore);
-    void vkDestroyCommandPool(VkCommandPool);
 }
 using namespace LunaLuxVulkanLib;
 #endif //GITIGNORE_VULKANLIBRENDERCOMANDS_H

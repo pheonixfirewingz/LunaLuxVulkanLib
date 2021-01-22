@@ -12,15 +12,17 @@ namespace LunaLuxVulkanLib
 {
     void createContext(bool,LunaLuxWindowLib::Window*);
 
-    bool updateContext(LunaLuxWindowLib::Window*);
-
     void frameBegin(VkFence);
 
     void frameSubmit(std::vector<VkSemaphore>,VkSubmitInfo);
 
+    uint32_t findGpuMemoryType(uint32_t, VkMemoryPropertyFlags);
+
     [[maybe_unused]] [[nodiscard]] const VkDevice getDevice();
 
     [[maybe_unused]] [[nodiscard]] const VkRenderPass getRenderPass();
+
+    [[maybe_unused]] [[nodiscard]] const VkSwapchainKHR getSwapChain();
 
     void destroyContext();
 }

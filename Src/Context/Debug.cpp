@@ -23,6 +23,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags,VkDebug
     else if(flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) printf("debug msg:\n %s\n",msg);
     else if(flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) printf("performance msg:\n %s\n",msg);
     else if(flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) printf("error msg:\n %s\n", msg);
+
     return false;
 }
 

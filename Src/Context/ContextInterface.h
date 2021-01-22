@@ -5,27 +5,24 @@
 #ifndef GITIGNORE_CONTEXTINTERFACE_H
 #define GITIGNORE_CONTEXTINTERFACE_H
 //TODO: write documentation
-#include "Interface/Platform.h"
 #include <LunaLuxWindowLib/Window.h>
 #include <vulkan/vulkan_core.h>
 #include <vector>
+#include "Componants/Instance.h"
+#include "Componants/Device.h"
+#include "Componants/Surface.h"
+#include "Componants/SwapChain.h"
 namespace LunaLuxVulkanLib
 {
     class ContextInterface
     {
     private:
-        VkInstance instance = nullptr;
-        VkPhysicalDevice p_device = nullptr;
-        VkDevice device = nullptr;
-        VkSurfaceKHR  surface = nullptr;
-        VkPhysicalDeviceProperties properties;
-        VkPhysicalDeviceFeatures deviceFeatures;
-        VkSurfaceCapabilitiesKHR surfaceCapabilities;
-        VkSurfaceFormatKHR surfaceFormat;
-        VkFormat depthFormat = VK_FORMAT_UNDEFINED;
+        Instance* instance = nullptr;
+        Device* device = nullptr;
+        Surface* surface = nullptr;
+        SwapChain* swapChain = nullptr;
         uint32_t ImageCount = 0;
-        uint32_t family_index = 0;
-        VkSwapchainKHR swapchain = nullptr;
+        VkFormat depthFormat = VK_FORMAT_UNDEFINED;
         VkQueue graphicQueue = nullptr;
         VkImage depthImage = nullptr;
         VkDeviceMemory	depthImageDeviceMemory	= nullptr;
@@ -34,31 +31,31 @@ namespace LunaLuxVulkanLib
         std::vector<VkImageView>			swapChain_image_views;
     public:
         void createContext(bool,LunaLuxWindowLib::Window*);
-        void updateContext(bool,LunaLuxWindowLib::Window*);
         void destroyContext(bool);
-        [[maybe_unused]] [[nodiscard]] uint32_t getFamilyIndex() const;
 
-        [[maybe_unused]] [[nodiscard]] const VkQueue getGraphicQueue() const;
+        Instance *getInstance() const;
 
-        [[maybe_unused]] [[nodiscard]] const VkInstance getInstance() const;
+        Device *getDevice() const;
 
-        [[maybe_unused]] [[nodiscard]] const VkDevice getDevice() const;
+        Surface *getSurface() const;
 
-        [[maybe_unused]] [[nodiscard]] const VkSurfaceFormatKHR &getSurfaceFormat() const;
+        VkFormat getDepthFormat() const;
 
-        [[maybe_unused]] [[nodiscard]] VkFormat getDepthFormat() const;
+        SwapChain *getSwapChain() const;
 
-        [[maybe_unused]] [[nodiscard]] const VkSwapchainKHR getSwapchain() const;
+        uint32_t getImageCount() const;
 
-        [[maybe_unused]] [[nodiscard]] const VkImage getDepthImage() const;
+        const VkQueue getGraphicQueue() const;
 
-        [[maybe_unused]] [[nodiscard]] const VkImageView getDepthImageView() const;
+        const VkImage getDepthImage() const;
 
-        [[maybe_unused]] [[nodiscard]] const std::vector<VkImage> &getSwapChainImages() const;
+        const VkDeviceMemory getDepthImageDeviceMemory() const;
 
-        [[maybe_unused]] [[nodiscard]] const std::vector<VkImageView> &getSwapChainImageViews() const;
+        const VkImageView getDepthImageView() const;
 
-        [[maybe_unused]] [[nodiscard]] uint32_t getImageCount() const;
+        const std::vector<VkImage> &getSwapChainImages() const;
+
+        const std::vector<VkImageView> &getSwapChainImageViews() const;
     };
 }
 #endif //GITIGNORE_CONTEXTINTERFACE_H
