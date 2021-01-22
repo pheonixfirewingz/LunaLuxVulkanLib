@@ -26,6 +26,7 @@ namespace LunaLuxVulkanLib
     std::tuple<VkPipeline,VkPipelineLayout> vkGenDefaultPipeline(LunaLuxWindowLib::Window*,VkPipelineShaderStageCreateInfo[],VkPipelineVertexInputStateCreateInfo,
                                     VkPipelineInputAssemblyStateCreateInfo);
     VkShaderModule vkGenShaderModule(const std::vector<char>&);
+    VkPipelineShaderStageCreateInfo vkGenShaderLink(VkShaderModule,VkShaderStageFlagBits);
     void vkDestroyShaderModule(VkShaderModule);
     void vkDestroyPipeline(VkPipeline);
     void vkDestroyPipelineLayout(VkPipelineLayout);
@@ -34,6 +35,14 @@ namespace LunaLuxVulkanLib
     VkRenderPassBeginInfo vkClearColour(float,float,float);
     void vkSetViewport(VkCommandBuffer,float,float);
     void vkSetScissor(VkCommandBuffer,float,float);
+
+    //buffer commands
+    VkBuffer vkGenBuffer(VkBufferCreateInfo*);
+    VkMemoryRequirements vkGetBufferMemoryRequirements(VkBuffer);
+    VkDeviceMemory vkAllocateMemory(VkMemoryRequirements, VkMemoryPropertyFlags);
+    void vkBufferTransferData(void*,VkDeviceMemory,VkBufferCreateInfo);
+    void vkFreeMemory(VkDeviceMemory);
+    void vkDestroyBuffer(VkBuffer);
 }
 using namespace LunaLuxVulkanLib;
 #endif //GITIGNORE_VULKANLIBRENDERCOMANDS_H

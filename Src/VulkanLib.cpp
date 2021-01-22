@@ -121,8 +121,9 @@ namespace LunaLuxVulkanLib
         return render_pass_begin_info;
     }
 
-    void frameBegin(VkFence fence)
+    bool frameBegin(VkFence fence)
     {
+        bool change = false;
         jumpback:
         vkQueueWaitIdle(context->getGraphicQueue());
         VkResult result = vkAcquireNextImageKHR(context->getDevice()->getDev(),context->getSwapChain()->getSwapchain(),UINT64_MAX,
@@ -135,6 +136,7 @@ namespace LunaLuxVulkanLib
                 context->reset(width, height);
                 frameBuffer->reset(context->getSwapChain(), renderPass, context->getDepthHandler(), width, height);
                 vkResetFences(  context->getDevice()->getDev(), 1, &fence );
+                change = true;
                 goto jumpback;
             }
         }
@@ -142,6 +144,7 @@ namespace LunaLuxVulkanLib
 
         vkWaitForFences( context->getDevice()->getDev(), 1, &fence, VK_TRUE, UINT64_MAX );
         vkResetFences(  context->getDevice()->getDev(), 1, &fence );
+        return change;
     }
 
     void frameSubmit(std::vector<VkSemaphore> wait_semaphores,VkSubmitInfo submitInfo)
@@ -199,7 +202,8 @@ namespace LunaLuxVulkanLib
     VkCommandBuffer LunaLuxVulkanLib::vkAllocateCommandBuffers(VkCommandBufferAllocateInfo * bufferAllocateInfo)
     {
         VkCommandBuffer buffer = {};
-        vkAllocateCommandBuffers(context->getDevice()->getDev(),bufferAllocateInfo,&buffer);
+        if(vkAllocateCommandBuffers(context->getDevice()->getDev(),bufferAllocateInfo,&buffer) != VK_SUCCESS)
+            throw std::runtime_error("failed to allocate vertex buffer memory!");
         return buffer;
     }
 
@@ -366,5 +370,61 @@ namespace LunaLuxVulkanLib
     void vkDestroyCommandPool(VkCommandPool commandPool)
     {
         vkDestroyCommandPool(context->getDevice()->getDev(),commandPool, nullptr);
+    }
+
+    VkDeviceMemory vkAllocateMemory(VkMemoryRequirements memRequirements,VkMemoryPropertyFlags flags)
+    {
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = findGpuMemoryType(memRequirements.memoryTypeBits,flags);
+        VkDeviceMemory BufferMemory;
+        if (vkAllocateMemory(context->getDevice()->getDev(), &allocInfo, nullptr, &BufferMemory) != VK_SUCCESS)
+            throw std::runtime_error("failed to allocate vertex buffer memory!");
+        return BufferMemory;
+    }
+
+    VkBuffer vkGenBuffer(VkBufferCreateInfo* bufferCreateInfo)
+    {
+        VkBuffer buffer_ret;
+        if (vkCreateBuffer(context->getDevice()->getDev(), bufferCreateInfo, nullptr, &buffer_ret) != VK_SUCCESS)
+            throw std::runtime_error("failed to create vertex buffer!");
+        return buffer_ret;
+    }
+
+    VkMemoryRequirements vkGetBufferMemoryRequirements(VkBuffer buffer)
+    {
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements(context->getDevice()->getDev(), buffer, &memRequirements);
+        return memRequirements;
+    }
+
+    void vkFreeMemory(VkDeviceMemory memory)
+    {
+        vkFreeMemory(context->getDevice()->getDev(),memory, nullptr);
+
+    }
+
+    void vkDestroyBuffer(VkBuffer buffer)
+    {
+        vkDestroyBuffer(context->getDevice()->getDev(),buffer, nullptr);
+    }
+
+    void vkBufferTransferData(void * data_in, VkDeviceMemory BufferMemory, VkBufferCreateInfo bufferInfo)
+    {
+        void* data;
+        vkMapMemory(context->getDevice()->getDev(), BufferMemory, 0, bufferInfo.size, 0, &data);
+        memcpy(data, data_in, (size_t) bufferInfo.size);
+        vkUnmapMemory(context->getDevice()->getDev(), BufferMemory);
+    }
+
+    VkPipelineShaderStageCreateInfo vkGenShaderLink(VkShaderModule module, VkShaderStageFlagBits stageFlagBits)
+    {
+        VkPipelineShaderStageCreateInfo ShaderStageInfo = {};
+        ShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        ShaderStageInfo.stage = stageFlagBits;
+        ShaderStageInfo.module = module;
+        ShaderStageInfo.pName = "main";
+        return ShaderStageInfo;
     }
 }

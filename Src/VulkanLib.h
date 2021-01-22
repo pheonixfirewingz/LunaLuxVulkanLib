@@ -12,11 +12,9 @@ namespace LunaLuxVulkanLib
 {
     void createContext(bool,LunaLuxWindowLib::Window*);
 
-    void frameBegin(VkFence);
+    bool frameBegin(VkFence);
 
     void frameSubmit(std::vector<VkSemaphore>,VkSubmitInfo);
-
-    uint32_t findGpuMemoryType(uint32_t, VkMemoryPropertyFlags);
 
     [[maybe_unused]] [[nodiscard]] const VkDevice getDevice();
 
