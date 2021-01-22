@@ -6,20 +6,18 @@
 #include <array>
 #include <stdexcept>
 #include "Context/ContextInterface.h"
-#include "Common/Utils.h"
 #include "VulkanLib.h"
 #include "VulkanLibRenderComands.h"
+#include "Context/Componants/FrameBuffer.h"
 
 namespace LunaLuxVulkanLib
 {
     bool IDebug{false};
-    VkFence	swapChainFence = nullptr;
     uint32_t currentFrame = 0;
     ContextInterface* context;
     VkRenderPass renderPass = nullptr;
-    std::vector<VkFramebuffer> frameBuffers;
-    VkSwapchainKHR swapchain;
     LunaLuxWindowLib::Window* window = nullptr;
+    FrameBuffer* frameBuffer;
 
     void createContext(bool debug, LunaLuxWindowLib::Window * window_in)
     {
@@ -32,7 +30,7 @@ namespace LunaLuxVulkanLib
 
         std::array<VkAttachmentDescription, 2> attachments {};
         attachments[ 0 ].flags						= 0;
-        attachments[ 0 ].format						= context->getDepthFormat();
+        attachments[ 0 ].format						= context->getDepthHandler()->getDepthFormat();
         attachments[ 0 ].samples					= VK_SAMPLE_COUNT_1_BIT;
         attachments[ 0 ].loadOp						= VK_ATTACHMENT_LOAD_OP_CLEAR;
         attachments[ 0 ].storeOp					= VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -72,29 +70,10 @@ namespace LunaLuxVulkanLib
         render_pass_create_info.subpassCount		= sub_passes.size();
         render_pass_create_info.pSubpasses			= sub_passes.data();
 
-        debug_wrapper(debug, "vkCreateRenderPass",vkCreateRenderPass( context->getDevice()->getDev(), &render_pass_create_info, nullptr, &renderPass ) )
+        vkCreateRenderPass( context->getDevice()->getDev(), &render_pass_create_info, nullptr, &renderPass );
 
         auto[width,height] = window->GetWindowSize();
-        uint32_t ImageCount = context->getImageCount();
-        frameBuffers.resize( ImageCount );
-        for( uint32_t i=0; i < ImageCount; ++i )
-        {
-            std::array<VkImageView, 2> attachments {};
-            attachments[ 0 ]	= context->getDepthImageView();
-            attachments[ 1 ]	= context->getSwapChainImageViews()[ i ];
-
-            VkFramebufferCreateInfo framebuffer_create_info {};
-            framebuffer_create_info.sType			= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebuffer_create_info.renderPass		= renderPass;
-            framebuffer_create_info.attachmentCount	= attachments.size();
-            framebuffer_create_info.pAttachments	= attachments.data();
-            framebuffer_create_info.width			= width;
-            framebuffer_create_info.height			= height;
-            framebuffer_create_info.layers			= 1;
-
-            debug_wrapper(debug,"vkCreateFramebuffer", vkCreateFramebuffer( context->getDevice()->getDev(), &framebuffer_create_info, nullptr, &frameBuffers[ i ] ) )
-        }
-        swapchain = context->getSwapChain()->getSwapchain();
+        frameBuffer = new FrameBuffer(context->getDevice(),context->getSwapChain(),renderPass,context->getDepthHandler(),width,height);
     }
 
     const VkDevice getDevice()
@@ -110,9 +89,8 @@ namespace LunaLuxVulkanLib
     void destroyContext()
     {
         vkQueueWaitIdle(context->getGraphicQueue());
-        for( auto f : frameBuffers ) vkDestroyFramebuffer( context->getDevice()->getDev(), f, nullptr );
+        delete frameBuffer;
         vkDestroyRenderPass(context->getDevice()->getDev(), renderPass, nullptr );
-        vkDestroyFence(context->getDevice()->getDev(),swapChainFence, nullptr);
         context->destroyContext(IDebug);
     }
 
@@ -138,27 +116,32 @@ namespace LunaLuxVulkanLib
         render_pass_begin_info.renderArea.extent.height = height;
         render_pass_begin_info.clearValueCount		= 2;
         render_pass_begin_info.pClearValues         = clear_values;
-        render_pass_begin_info.framebuffer			= frameBuffers[currentFrame];
+        render_pass_begin_info.framebuffer			= frameBuffer->getFrameBuffers()[currentFrame];
 
         return render_pass_begin_info;
     }
 
     void frameBegin(VkFence fence)
     {
-        VkResult result = vkAcquireNextImageKHR(context->getDevice()->getDev(),swapchain,UINT64_MAX,
+        jumpback:
+        vkQueueWaitIdle(context->getGraphicQueue());
+        VkResult result = vkAcquireNextImageKHR(context->getDevice()->getDev(),context->getSwapChain()->getSwapchain(),UINT64_MAX,
                                                 VK_NULL_HANDLE,fence,&currentFrame );
         if(result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            auto[width,height] = window->GetWindowSize();
-            context->getSwapChain()->reset(context->getSurface(),width,height);
+            if(!window->ShouldClose())
+            {
+                auto[width, height] = window->GetWindowSize();
+                context->reset(width, height);
+                frameBuffer->reset(context->getSwapChain(), renderPass, context->getDepthHandler(), width, height);
+                vkResetFences(  context->getDevice()->getDev(), 1, &fence );
+                goto jumpback;
+            }
         }
-        else if(result != VK_SUCCESS)
-        {
-            printf("swapChain Error: %i\n",result);
-        }
-        debug_wrapper(IDebug,"vkWaitForFences",vkWaitForFences( context->getDevice()->getDev(), 1, &fence, VK_TRUE, UINT64_MAX ) )
-        debug_wrapper(IDebug,"vkResetFences" ,vkResetFences(  context->getDevice()->getDev(), 1, &fence ) )
-        debug_wrapper(IDebug,"vkQueueWaitIdle",vkQueueWaitIdle(context->getGraphicQueue()))
+        else if(result != VK_SUCCESS) printf("swapChain Error: %i\n",result);
+
+        vkWaitForFences( context->getDevice()->getDev(), 1, &fence, VK_TRUE, UINT64_MAX );
+        vkResetFences(  context->getDevice()->getDev(), 1, &fence );
     }
 
     void frameSubmit(std::vector<VkSemaphore> wait_semaphores,VkSubmitInfo submitInfo)
@@ -172,6 +155,7 @@ namespace LunaLuxVulkanLib
         present_info.waitSemaphoreCount		= wait_semaphores.size();
         present_info.pWaitSemaphores		= wait_semaphores.data();
         present_info.swapchainCount			= 1;
+        VkSwapchainKHR swapchain = context->getSwapChain()->getSwapchain();
         present_info.pSwapchains			= &swapchain;
         present_info.pImageIndices			= &currentFrame;
         present_info.pResults				= &present_result;
@@ -180,18 +164,17 @@ namespace LunaLuxVulkanLib
         result = vkQueuePresentKHR( context->getGraphicQueue(), &present_info );
         if(result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            auto[width,height] = window->GetWindowSize();
-            context->getSwapChain()->reset(context->getSurface(),width,height);
+            if(!window->ShouldClose())
+            {
+                auto[width, height] = window->GetWindowSize();
+                context->reset(width, height);
+                frameBuffer->reset(context->getSwapChain(), renderPass, context->getDepthHandler(), width, height);
+            }
         }
         else if(result != VK_SUCCESS)
         {
             printf("swapChain Error: %i\n",result);
         }
-    }
-
-    const VkSwapchainKHR getSwapChain()
-    {
-        return swapchain;
     }
 
     VkCommandPool vkGenCommandPool(VkCommandPoolCreateFlags flags)
@@ -222,7 +205,7 @@ namespace LunaLuxVulkanLib
 
     void vkQueueWaitIdle()
     {
-        debug_wrapper(IDebug,"vkQueueWaitIdle",vkQueueWaitIdle(context->getGraphicQueue()))
+        vkQueueWaitIdle(context->getGraphicQueue());
     }
     VkSemaphore vkGenSemaphore()
     {

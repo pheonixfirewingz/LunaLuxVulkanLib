@@ -6,11 +6,10 @@
 #include "Surface.h"
 #include "../Interface/Platform.h"
 #include <stdexcept>
+#include <vector>
 #ifdef LLE_WINDOWS
 #include <windows.h>
 #include <vulkan/vulkan_win32.h>
-#include <vector>
-
 #endif
 namespace LunaLuxVulkanLib
 {

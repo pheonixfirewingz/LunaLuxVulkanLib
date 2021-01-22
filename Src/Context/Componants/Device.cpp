@@ -84,9 +84,10 @@ namespace LunaLuxVulkanLib
     VkPhysicalDevice Device::findRightDevice(VkInstance instance)
     {
         uint32_t count = 0;
+        VkPhysicalDevice* pDevice;
         vkEnumeratePhysicalDevices(instance, &count, nullptr);
-        std::vector<VkPhysicalDevice> pDevice(count);
-        vkEnumeratePhysicalDevices(instance, &count, pDevice.data());
+        pDevice = new VkPhysicalDevice[count];
+        vkEnumeratePhysicalDevices(instance, &count, pDevice);
         if (count == 1)return pDevice[0];
         else
         {

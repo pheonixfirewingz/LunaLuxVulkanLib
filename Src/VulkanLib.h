@@ -22,8 +22,6 @@ namespace LunaLuxVulkanLib
 
     [[maybe_unused]] [[nodiscard]] const VkRenderPass getRenderPass();
 
-    [[maybe_unused]] [[nodiscard]] const VkSwapchainKHR getSwapChain();
-
     void destroyContext();
 }
 using namespace LunaLuxVulkanLib;

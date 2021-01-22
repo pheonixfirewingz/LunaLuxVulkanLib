@@ -35,14 +35,20 @@ public:
 };
 
 const std::vector<Vertex> vertices =
-{
-        { 1.0f, 0.0f, 0.0f,-0.5f, 0.5f},
-        { 0.0f, 1.0f, 0.0f,-0.5f, -0.5f},
-        { 0.0f, 0.0f, 1.0f,0.5f, -0.5f},
-        { 0.0f, 1.0f, 0.0f,0.5f, -0.5f},
-        { 0.0f, 0.0f, 0.0f,0.5f, 0.5f},
-        { 1.0f, 0.0f, 1.0f,-0.5f, 0.5f}
-};
+        {
+                {1.0f, 0.0f, 0.0f,-0.5f, 0.5f},
+                {0.0f, 1.0f, 0.0f,-0.5f, -0.5f},
+                {0.0f, 0.0f, 1.0f,0.5f, -0.5f},
+                {0.0f, 1.0f, 0.0f,0.5f, -0.5f},
+                {0.0f, 0.0f, 0.0f,0.5f, 0.5f},
+                {1.0f, 0.0f, 1.0f,-0.5f, 0.5f}
+                  /*{1.0f, 0.0f, 0.0f, -1.0f, 1.0f}
+                , {0.0f, 1.0f, 0.0f, -1.0f, -1.0f}
+                , {0.0f, 0.0f, 1.0f, 1.0f , -1.0f}
+                , {0.0f, 1.0f, 0.0f, 1.0f , -1.0f}
+                , {0.0f, 0.0f, 0.0f, 1.0f , 1.0f}
+                , {1.0f, 0.0f, 1.0f, -1.0f, 1.0f}*/
+        };
 
 static std::vector<char> readFile(const std::string& filename)
 {
@@ -177,7 +183,7 @@ int main()
         command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
         vkBeginCommandBuffer(command_buffer, &command_buffer_begin_info);
-        VkRenderPassBeginInfo render_pass_begin_info = vkClearColour(0.0f, 0.0f, 0.0f);
+        VkRenderPassBeginInfo render_pass_begin_info = vkClearColour(0.5f, 0.5f, 0.5f);
         vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
         auto[width,height]= window->GetWindowSize();
