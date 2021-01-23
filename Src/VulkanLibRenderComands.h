@@ -1,7 +1,4 @@
-//
 // Created by luket on 18/01/2021.
-//
-
 #ifndef GITIGNORE_VULKANLIBRENDERCOMANDS_H
 #define GITIGNORE_VULKANLIBRENDERCOMANDS_H
 //TODO: write documentation
@@ -11,11 +8,13 @@
 namespace LunaLuxVulkanLib
 {
     //command pool
+    //-----------------------------------------------------------------------------------------------------------------
     VkCommandPool vkGenCommandPool(VkCommandPoolCreateFlags flags);
     VkCommandBuffer vkAllocateCommandBuffers(VkCommandBufferAllocateInfo*);
     void vkDestroyCommandPool(VkCommandPool);
 
     //threads
+    //-----------------------------------------------------------------------------------------------------------------
     VkFence vkGenFence();
     VkSemaphore vkGenSemaphore();
     void vkQueueWaitIdle();
@@ -23,6 +22,7 @@ namespace LunaLuxVulkanLib
     void vkDestroySemaphore(VkSemaphore);
 
     //pipeline
+    //-----------------------------------------------------------------------------------------------------------------
     std::tuple<VkPipeline,VkPipelineLayout> vkGenDefaultPipeline(LunaLuxWindowLib::Window*,VkPipelineShaderStageCreateInfo[],VkPipelineVertexInputStateCreateInfo,
                                     VkPipelineInputAssemblyStateCreateInfo);
     VkShaderModule vkGenShaderModule(const std::vector<char>&);
@@ -32,17 +32,21 @@ namespace LunaLuxVulkanLib
     void vkDestroyPipelineLayout(VkPipelineLayout);
 
     //command buffer commands
-    VkRenderPassBeginInfo vkClearColour(float,float,float);
+    //-----------------------------------------------------------------------------------------------------------------
+    VkRenderPassBeginInfo vkClearColour(const float,const float,const float);
     void vkSetViewport(VkCommandBuffer,float,float);
     void vkSetScissor(VkCommandBuffer,float,float);
 
     //buffer commands
-    VkBuffer vkGenBuffer(VkBufferCreateInfo*);
-    VkMemoryRequirements vkGetBufferMemoryRequirements(VkBuffer);
-    VkDeviceMemory vkAllocateMemory(VkMemoryRequirements, VkMemoryPropertyFlags);
-    void vkBufferTransferData(void*,VkDeviceMemory,VkBufferCreateInfo);
-    void vkFreeMemory(VkDeviceMemory);
-    void vkDestroyBuffer(VkBuffer);
+    //-----------------------------------------------------------------------------------------------------------------
+    void vkGenBuffer(void* data_in, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
+                     VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+    //this best used for updating your uniform shader buffer data;
+    void vkBufferUpdateData(void * data_in, VkDeviceMemory BufferMemory,uint64_t size);
+    //this is a helper function to help transfer data from on buffer to another
+    [[maybe_unused]] void vkCopyBuffer(VkCommandPool commandPool,VkBuffer srcBuffer,
+                                                     VkBuffer dstBuffer, VkDeviceSize size);
+    void vkDestroyBuffer(VkBuffer,VkDeviceMemory);
 }
 using namespace LunaLuxVulkanLib;
 #endif //GITIGNORE_VULKANLIBRENDERCOMANDS_H

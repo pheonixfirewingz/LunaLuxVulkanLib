@@ -19,11 +19,10 @@ namespace LunaLuxVulkanLib
     LunaLuxWindowLib::Window* window = nullptr;
     FrameBuffer* frameBuffer;
 
-    void createContext(bool debug, LunaLuxWindowLib::Window * window_in)
+    void vkCreateContext(bool debug, LunaLuxWindowLib::Window * window_in)
     {
         window = window_in;
-        if(debug) printf("WARRING: enabling full runtime debug may cause quirks that are not in non debug runtime "
-                         "set(this is in the FIX ME: list)");
+        if(debug) printf("WARRING: enabling vkDebugLayers may cause vkClearColour to not work correctly due in runtime");
         IDebug = debug;
         context = new ContextInterface();
         context->createContext(debug,window);
@@ -76,17 +75,12 @@ namespace LunaLuxVulkanLib
         frameBuffer = new FrameBuffer(context->getDevice(),context->getSwapChain(),renderPass,context->getDepthHandler(),width,height);
     }
 
-    const VkDevice getDevice()
+    const VkDevice vkGetDevice()
     {
         return context->getDevice()->getDev();
     }
 
-    const VkRenderPass getRenderPass()
-    {
-        return renderPass;
-    }
-
-    void destroyContext()
+    void vkDestroyContext()
     {
         vkQueueWaitIdle(context->getGraphicQueue());
         delete frameBuffer;
@@ -94,7 +88,7 @@ namespace LunaLuxVulkanLib
         context->destroyContext(IDebug);
     }
 
-    VkRenderPassBeginInfo vkClearColour(float r, float g, float b)
+    VkRenderPassBeginInfo vkClearColour(const float r, const float g,const float b)
     {
 
         VkClearValue clear_values[2];
@@ -121,7 +115,7 @@ namespace LunaLuxVulkanLib
         return render_pass_begin_info;
     }
 
-    bool frameBegin(VkFence fence)
+    bool vkFrameBegin(VkFence fence)
     {
         bool change = false;
         jumpback:
@@ -147,7 +141,7 @@ namespace LunaLuxVulkanLib
         return change;
     }
 
-    void frameSubmit(std::vector<VkSemaphore> wait_semaphores,VkSubmitInfo submitInfo)
+    void vkFrameSubmit(std::vector<VkSemaphore> wait_semaphores,VkSubmitInfo submitInfo)
     {
         vkQueueSubmit( context->getGraphicQueue(), 1, &submitInfo, VK_NULL_HANDLE );
         VkResult present_result = VkResult::VK_RESULT_MAX_ENUM;
@@ -192,12 +186,6 @@ namespace LunaLuxVulkanLib
         vkCreateCommandPool(context->getDevice()->getDev(), &pool_create_info, nullptr, &command_pool );
         return command_pool;
     }
-
-    uint32_t findGpuMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
-    {
-        return context->getDevice()->findGpuMemoryType(typeFilter,properties);
-    }
-
 
     VkCommandBuffer LunaLuxVulkanLib::vkAllocateCommandBuffers(VkCommandBufferAllocateInfo * bufferAllocateInfo)
     {
@@ -347,6 +335,14 @@ namespace LunaLuxVulkanLib
         return {pipeline,pipelineLayout};
     }
 
+    void vkBufferUpdateData(void * data_in, VkDeviceMemory BufferMemory,uint64_t size)
+    {
+        void* data;
+        vkMapMemory(context->getDevice()->getDev(), BufferMemory, 0, size, 0, &data);
+        memcpy(data, data_in, (size_t) size);
+        vkUnmapMemory(context->getDevice()->getDev(), BufferMemory);
+    }
+
     void vkDestroyPipeline(VkPipeline pipe)
     {
         vkDestroyPipeline(context->getDevice()->getDev(),pipe, nullptr);
@@ -372,50 +368,79 @@ namespace LunaLuxVulkanLib
         vkDestroyCommandPool(context->getDevice()->getDev(),commandPool, nullptr);
     }
 
-    VkDeviceMemory vkAllocateMemory(VkMemoryRequirements memRequirements,VkMemoryPropertyFlags flags)
+    void vkGenBuffer(void* data_in,VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
+                     VkBuffer& buffer, VkDeviceMemory& bufferMemory)
     {
+        VkBufferCreateInfo bufferInfo{};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = size;
+        bufferInfo.usage = usage;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        if (vkCreateBuffer(context->getDevice()->getDev(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create buffer!");
+        }
+
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements(context->getDevice()->getDev(), buffer, &memRequirements);
+
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findGpuMemoryType(memRequirements.memoryTypeBits,flags);
-        VkDeviceMemory BufferMemory;
-        if (vkAllocateMemory(context->getDevice()->getDev(), &allocInfo, nullptr, &BufferMemory) != VK_SUCCESS)
-            throw std::runtime_error("failed to allocate vertex buffer memory!");
-        return BufferMemory;
+        allocInfo.memoryTypeIndex = context->getDevice()->findGpuMemoryType(memRequirements.memoryTypeBits, properties);
+
+        if (vkAllocateMemory(context->getDevice()->getDev(), &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to allocate buffer memory!");
+        }
+
+        vkBindBufferMemory(context->getDevice()->getDev(), buffer, bufferMemory, 0);
+
+        void* data;
+        vkMapMemory(context->getDevice()->getDev(), bufferMemory, 0, bufferInfo.size, 0, &data);
+        memcpy(data, data_in, (size_t) bufferInfo.size);
+        vkUnmapMemory(context->getDevice()->getDev(), bufferMemory);
     }
 
-    VkBuffer vkGenBuffer(VkBufferCreateInfo* bufferCreateInfo)
+    void vkCopyBuffer(VkCommandPool commandPool,VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
-        VkBuffer buffer_ret;
-        if (vkCreateBuffer(context->getDevice()->getDev(), bufferCreateInfo, nullptr, &buffer_ret) != VK_SUCCESS)
-            throw std::runtime_error("failed to create vertex buffer!");
-        return buffer_ret;
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = commandPool;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        vkAllocateCommandBuffers(context->getDevice()->getDev(), &allocInfo, &commandBuffer);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        VkBufferCopy copyRegion{};
+        copyRegion.size = size;
+        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+        vkEndCommandBuffer(commandBuffer);
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        vkQueueSubmit(context->getGraphicQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle();
+
+        vkFreeCommandBuffers(context->getDevice()->getDev(), commandPool, 1, &commandBuffer);
     }
 
-    VkMemoryRequirements vkGetBufferMemoryRequirements(VkBuffer buffer)
-    {
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(context->getDevice()->getDev(), buffer, &memRequirements);
-        return memRequirements;
-    }
-
-    void vkFreeMemory(VkDeviceMemory memory)
+    void vkDestroyBuffer(VkBuffer buffer,VkDeviceMemory memory)
     {
         vkFreeMemory(context->getDevice()->getDev(),memory, nullptr);
-
-    }
-
-    void vkDestroyBuffer(VkBuffer buffer)
-    {
         vkDestroyBuffer(context->getDevice()->getDev(),buffer, nullptr);
-    }
-
-    void vkBufferTransferData(void * data_in, VkDeviceMemory BufferMemory, VkBufferCreateInfo bufferInfo)
-    {
-        void* data;
-        vkMapMemory(context->getDevice()->getDev(), BufferMemory, 0, bufferInfo.size, 0, &data);
-        memcpy(data, data_in, (size_t) bufferInfo.size);
-        vkUnmapMemory(context->getDevice()->getDev(), BufferMemory);
     }
 
     VkPipelineShaderStageCreateInfo vkGenShaderLink(VkShaderModule module, VkShaderStageFlagBits stageFlagBits)

@@ -13,7 +13,6 @@ namespace LunaLuxVulkanLib
     private:
         VkPhysicalDevice p_device = nullptr;
         VkDevice device = nullptr;
-        VkPhysicalDeviceMemoryProperties memProperties;
         VkPhysicalDeviceProperties properties;
         VkPhysicalDeviceFeatures deviceFeatures;
         uint32_t graphic_family_index = 0;
@@ -30,8 +29,6 @@ namespace LunaLuxVulkanLib
         VkDevice getDev();
 
         uint32_t getGraphicFamilyIndex() const;
-
-        const VkPhysicalDeviceMemoryProperties getMemProperties() const;
 
         const VkPhysicalDeviceProperties getProperties() const;
 

@@ -16,7 +16,6 @@ namespace LunaLuxVulkanLib
         const char * devextend[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME };
         p_device = findRightDevice(instance);
         vkGetPhysicalDeviceProperties(p_device, &properties);
-        vkGetPhysicalDeviceMemoryProperties(p_device, &memProperties);
         vkGetPhysicalDeviceFeatures(p_device,&deviceFeatures);
         float queue[]{1.0f};
         VkDeviceQueueCreateInfo queue_info = {};
@@ -71,12 +70,12 @@ namespace LunaLuxVulkanLib
 
     uint32_t Device::findGpuMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
     {
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(p_device, &memProperties);
 
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-        {
-            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-                return i;
-        }
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) if ((typeFilter & (1 << i)) &&
+        (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            return i;
 
         throw std::runtime_error("failed to find suitable memory type!");
     }
@@ -89,10 +88,8 @@ namespace LunaLuxVulkanLib
         pDevice = new VkPhysicalDevice[count];
         vkEnumeratePhysicalDevices(instance, &count, pDevice);
         if (count == 1)return pDevice[0];
-        else
-        {
-            throw std::runtime_error("multi gpu support has not been implemented");
-        }
+        //TODO: add multi gpu support
+        else throw std::runtime_error("multi gpu support has not been implemented");
     }
 
     VkPhysicalDevice Device::getPDev()
@@ -103,11 +100,6 @@ namespace LunaLuxVulkanLib
     VkDevice Device::getDev()
     {
         return device;
-    }
-
-    const VkPhysicalDeviceMemoryProperties Device::getMemProperties() const
-    {
-        return memProperties;
     }
 
     const VkPhysicalDeviceProperties Device::getProperties() const

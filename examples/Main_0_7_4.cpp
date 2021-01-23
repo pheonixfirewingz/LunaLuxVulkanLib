@@ -28,16 +28,16 @@ public:
 
 VkPipeline Graphic_pipeline;
 VkPipelineLayout pipeline_Layout;
-const std::vector<Vertex> vertices = {
-        {1.0f, 1.0f, 1.0f,-0.5f, -0.5f},
-        {0.0f, 1.0f, 1.0f,0.5f, -0.5f},
-        {0.0f, 0.0f, 1.0f,0.5f, 0.5f},
-        {0.0f, 0.0f, 0.0f,-0.5f, 0.5f}
-};
+const std::vector<Vertex> vertices =
+        {
+                {1.0f, 0.0f, 0.0f,-0.5f, 0.5f},
+                {0.0f, 1.0f, 0.0f,-0.5f, -0.5f},
+                {0.0f, 0.0f, 1.0f,0.5f, -0.5f},
+                {0.0f, 1.0f, 0.0f,0.5f, -0.5f},
+                {0.0f, 0.0f, 0.0f,0.5f, 0.5f},
+                {1.0f, 0.0f, 1.0f,-0.5f, 0.5f}
+        };
 
-const std::vector<uint16_t> indices = {
-        0, 1, 2, 2, 3, 0
-};
 static std::vector<char> readFile(const std::string& filename)
 {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -61,7 +61,7 @@ int main()
     VkFence fence;
     auto* window = new LunaLuxWindowLib::Window();
     window->Open("Vulkan Library Test 2",NULL,NULL);
-    vkCreateContext(false,window);
+    createContext(false,window);
 
     VkCommandPool command_pool = vkGenCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
                                                        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -78,22 +78,24 @@ int main()
 
     createPipeLine(window);
 
-    VkDeviceSize bufferSize_ = sizeof(vertices[0]) * vertices.size();
-    VkBuffer vertexBuffer = {};
-    VkDeviceMemory vertexBufferMemory = {};
-    vkGenBuffer((void*)vertices.data(),bufferSize_, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = sizeof(vertices[0]) * vertices.size();
+    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VkBuffer vertexBuffer = vkGenBuffer(&bufferInfo);
 
-    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-    VkBuffer indexBuffer = {};
-    VkDeviceMemory indexBufferMemory = {};
-    vkGenBuffer((void*)indices.data(),bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+    VkMemoryRequirements memRequirements = vkGetBufferMemoryRequirements(vertexBuffer);
+
+    VkDeviceMemory vertexBufferMemory = vkAllocateMemory(memRequirements,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    vkBindBufferMemory(getDevice(), vertexBuffer, vertexBufferMemory, 0);
+    vkBufferTransferData((void*)vertices.data(),vertexBufferMemory,bufferInfo);
 
     while (!window->ShouldClose())
     {
         window->Update(30.0);
-        if(vkFrameBegin(fence))
+        if(frameBegin(fence))
         {
             vkDestroyPipeline(Graphic_pipeline);
             vkDestroyPipelineLayout(pipeline_Layout);
@@ -115,8 +117,7 @@ int main()
         VkBuffer vertexBuffers[] = {vertexBuffer};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(command_buffer,indexBuffer,0,VK_INDEX_TYPE_UINT16);
-        vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(indices.size()), 1, 0, 0,0);
+        vkCmdDraw(command_buffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
         vkCmdEndRenderPass(command_buffer);
         vkEndCommandBuffer(command_buffer);
@@ -130,17 +131,17 @@ int main()
         submit_info.pCommandBuffers = &command_buffer;
         submit_info.signalSemaphoreCount = 1;
         submit_info.pSignalSemaphores = &render_complete_semaphore;
-        vkFrameSubmit({render_complete_semaphore}, submit_info);
+        frameSubmit({render_complete_semaphore}, submit_info);
     }
     vkQueueWaitIdle();
-    vkDestroyBuffer(vertexBuffer,vertexBufferMemory);
-    vkDestroyBuffer(indexBuffer,indexBufferMemory);
+    vkFreeMemory(vertexBufferMemory);
+    vkDestroyBuffer(vertexBuffer);
     vkDestroyPipeline(Graphic_pipeline);
     vkDestroyPipelineLayout(pipeline_Layout);
     vkDestroyFence(fence);
     vkDestroySemaphore(render_complete_semaphore);
     vkDestroyCommandPool(command_pool);
-    vkDestroyContext();
+    destroyContext();
     return 0;
 }
 

@@ -29,10 +29,10 @@ public:
 VkPipeline Graphic_pipeline;
 VkPipelineLayout pipeline_Layout;
 const std::vector<Vertex> vertices = {
-        {1.0f, 1.0f, 1.0f,-0.5f, -0.5f},
-        {0.0f, 1.0f, 1.0f,0.5f, -0.5f},
+        {1.0f, 0.0f, 0.0f,-0.5f, -0.5f},
+        {0.0f, 1.0f, 0.0f,0.5f, -0.5f},
         {0.0f, 0.0f, 1.0f,0.5f, 0.5f},
-        {0.0f, 0.0f, 0.0f,-0.5f, 0.5f}
+        {1.0f, 1.0f, 1.0f,-0.5f, 0.5f}
 };
 
 const std::vector<uint16_t> indices = {
@@ -61,7 +61,7 @@ int main()
     VkFence fence;
     auto* window = new LunaLuxWindowLib::Window();
     window->Open("Vulkan Library Test 2",NULL,NULL);
-    vkCreateContext(false,window);
+    createContext(false,window);
 
     VkCommandPool command_pool = vkGenCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
                                                        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -93,7 +93,7 @@ int main()
     while (!window->ShouldClose())
     {
         window->Update(30.0);
-        if(vkFrameBegin(fence))
+        if(frameBegin(fence))
         {
             vkDestroyPipeline(Graphic_pipeline);
             vkDestroyPipelineLayout(pipeline_Layout);
@@ -130,17 +130,17 @@ int main()
         submit_info.pCommandBuffers = &command_buffer;
         submit_info.signalSemaphoreCount = 1;
         submit_info.pSignalSemaphores = &render_complete_semaphore;
-        vkFrameSubmit({render_complete_semaphore}, submit_info);
+        frameSubmit({render_complete_semaphore}, submit_info);
     }
     vkQueueWaitIdle();
-    vkDestroyBuffer(vertexBuffer,vertexBufferMemory);
-    vkDestroyBuffer(indexBuffer,indexBufferMemory);
+    vkFreeMemory(vertexBufferMemory);
+    vkDestroyBuffer(vertexBuffer);
     vkDestroyPipeline(Graphic_pipeline);
     vkDestroyPipelineLayout(pipeline_Layout);
     vkDestroyFence(fence);
     vkDestroySemaphore(render_complete_semaphore);
     vkDestroyCommandPool(command_pool);
-    vkDestroyContext();
+    destroyContext();
     return 0;
 }
 

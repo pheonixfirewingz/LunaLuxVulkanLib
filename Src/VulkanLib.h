@@ -10,17 +10,15 @@
 #include <vector>
 namespace LunaLuxVulkanLib
 {
-    void createContext(bool,LunaLuxWindowLib::Window*);
+    void vkCreateContext(bool,LunaLuxWindowLib::Window*);
 
-    bool frameBegin(VkFence);
+    bool vkFrameBegin(VkFence);
 
-    void frameSubmit(std::vector<VkSemaphore>,VkSubmitInfo);
+    void vkFrameSubmit(std::vector<VkSemaphore>,VkSubmitInfo);
 
-    [[maybe_unused]] [[nodiscard]] const VkDevice getDevice();
+    [[maybe_unused]] [[nodiscard]] const VkDevice vkGetDevice();
 
-    [[maybe_unused]] [[nodiscard]] const VkRenderPass getRenderPass();
-
-    void destroyContext();
+    void vkDestroyContext();
 }
 using namespace LunaLuxVulkanLib;
 #endif //GITIGNORE_VULKANLIB_H
