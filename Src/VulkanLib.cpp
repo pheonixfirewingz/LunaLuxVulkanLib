@@ -9,6 +9,7 @@
 #include "VulkanLib.h"
 #include "VulkanLibRenderComands.h"
 #include "Context/Componants/FrameBuffer.h"
+#include "Context/Componants/UniformBuffers.h"
 
 namespace LunaLuxVulkanLib
 {
@@ -18,8 +19,10 @@ namespace LunaLuxVulkanLib
     VkRenderPass renderPass = nullptr;
     LunaLuxWindowLib::Window* window = nullptr;
     FrameBuffer* frameBuffer;
+    UniformBuffers* uniformBuffers;
+    void* unifrom_type;
 
-    void vkCreateContext(bool debug, LunaLuxWindowLib::Window * window_in)
+    void vkCreateContext(bool debug, LunaLuxWindowLib::Window * window_in,void * uniform_type_in)
     {
         window = window_in;
         if(debug) printf("WARRING: enabling vkDebugLayers may cause vkClearColour to not work correctly due in runtime");
@@ -73,6 +76,8 @@ namespace LunaLuxVulkanLib
 
         auto[width,height] = window->GetWindowSize();
         frameBuffer = new FrameBuffer(context->getDevice(),context->getSwapChain(),renderPass,context->getDepthHandler(),width,height);
+        uniformBuffers = new UniformBuffers(context->getDevice(),context->getSwapChain(),uniform_type_in);
+        unifrom_type = uniform_type_in;
     }
 
     const VkDevice vkGetDevice()
@@ -83,6 +88,7 @@ namespace LunaLuxVulkanLib
     void vkDestroyContext()
     {
         vkQueueWaitIdle(context->getGraphicQueue());
+        delete uniformBuffers;
         delete frameBuffer;
         vkDestroyRenderPass(context->getDevice()->getDev(), renderPass, nullptr );
         context->destroyContext(IDebug);
@@ -128,7 +134,9 @@ namespace LunaLuxVulkanLib
             {
                 auto[width, height] = window->GetWindowSize();
                 context->reset(width, height);
-                frameBuffer->reset(context->getSwapChain(), renderPass, context->getDepthHandler(), width, height);
+                auto swap = context->getSwapChain();
+                frameBuffer->reset(swap, renderPass, context->getDepthHandler(), width, height);
+                uniformBuffers->reset(swap,unifrom_type);
                 vkResetFences(  context->getDevice()->getDev(), 1, &fence );
                 change = true;
                 goto jumpback;
@@ -172,6 +180,21 @@ namespace LunaLuxVulkanLib
         {
             printf("swapChain Error: %i\n",result);
         }
+    }
+
+    uint32_t vkGetCurrentFrame()
+    {
+        return currentFrame;
+    }
+
+    uint32_t vkGetFrameBufferCount()
+    {
+        return context->getSwapChain()->getImageCount();
+    }
+
+    void resetUniformObjectType(void * type)
+    {
+        uniformBuffers->reset(context->getSwapChain(),type);
     }
 
     VkCommandPool vkGenCommandPool(VkCommandPoolCreateFlags flags)
@@ -240,7 +263,8 @@ namespace LunaLuxVulkanLib
     }
 
     std::tuple<VkPipeline,VkPipelineLayout> vkGenDefaultPipeline(LunaLuxWindowLib::Window* window,VkPipelineShaderStageCreateInfo shaderStages[],
-                                    VkPipelineVertexInputStateCreateInfo vertexInputInfo,VkPipelineInputAssemblyStateCreateInfo inputAssembly)
+                                    VkPipelineVertexInputStateCreateInfo vertexInputInfo,VkPipelineInputAssemblyStateCreateInfo inputAssembly,
+                                    uint32_t layoutCount,VkDescriptorSetLayout* descriptorSetLayout)
     {
         VkPipeline pipeline = nullptr;
         VkPipelineLayout pipelineLayout = {};
@@ -307,6 +331,8 @@ namespace LunaLuxVulkanLib
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount = 0;
         pipelineLayoutInfo.pushConstantRangeCount = 0;
+        pipelineLayoutInfo.setLayoutCount = layoutCount;
+        pipelineLayoutInfo.pSetLayouts = descriptorSetLayout;
 
         if (vkCreatePipelineLayout(context->getDevice()->getDev(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
             throw std::runtime_error("failed to create pipeline layout!");
@@ -451,5 +477,26 @@ namespace LunaLuxVulkanLib
         ShaderStageInfo.module = module;
         ShaderStageInfo.pName = "main";
         return ShaderStageInfo;
+    }
+
+    void vkGenUniformDescriptorPool(VkDescriptorPool & descriptorPool, uint32_t count, uint32_t descriptor_count)
+    {
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.descriptorCount = static_cast<uint32_t>(descriptor_count);
+
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = count;
+        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.maxSets = static_cast<uint32_t>(descriptor_count);
+
+        if (vkCreateDescriptorPool(vkGetDevice(), &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+            throw std::runtime_error("failed to create descriptor pool!");
+    }
+
+    std::vector<VkBuffer> vkGetUnifromBuffers()
+    {
+        return uniformBuffers->getUniformBuffers();
     }
 }

@@ -21,10 +21,14 @@ namespace LunaLuxVulkanLib
     void vkDestroyFence(VkFence);
     void vkDestroySemaphore(VkSemaphore);
 
+    //descriptor
+    //-----------------------------------------------------------------------------------------------------------------
+    void vkGenUniformDescriptorPool(VkDescriptorPool&,uint32_t,uint32_t);
+
     //pipeline
     //-----------------------------------------------------------------------------------------------------------------
     std::tuple<VkPipeline,VkPipelineLayout> vkGenDefaultPipeline(LunaLuxWindowLib::Window*,VkPipelineShaderStageCreateInfo[],VkPipelineVertexInputStateCreateInfo,
-                                    VkPipelineInputAssemblyStateCreateInfo);
+                                    VkPipelineInputAssemblyStateCreateInfo,uint32_t,VkDescriptorSetLayout*);
     VkShaderModule vkGenShaderModule(const std::vector<char>&);
     VkPipelineShaderStageCreateInfo vkGenShaderLink(VkShaderModule,VkShaderStageFlagBits);
     void vkDestroyShaderModule(VkShaderModule);
@@ -43,6 +47,8 @@ namespace LunaLuxVulkanLib
                      VkBuffer& buffer, VkDeviceMemory& bufferMemory);
     //this best used for updating your uniform shader buffer data;
     void vkBufferUpdateData(void * data_in, VkDeviceMemory BufferMemory,uint64_t size);
+    //retrieves internal uniform buffers
+    std::vector<VkBuffer> vkGetUnifromBuffers();
     //this is a helper function to help transfer data from on buffer to another
     [[maybe_unused]] void vkCopyBuffer(VkCommandPool commandPool,VkBuffer srcBuffer,
                                                      VkBuffer dstBuffer, VkDeviceSize size);

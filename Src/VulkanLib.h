@@ -10,13 +10,19 @@
 #include <vector>
 namespace LunaLuxVulkanLib
 {
-    void vkCreateContext(bool,LunaLuxWindowLib::Window*);
+    void vkCreateContext(bool,LunaLuxWindowLib::Window*,void *);
 
     bool vkFrameBegin(VkFence);
 
     void vkFrameSubmit(std::vector<VkSemaphore>,VkSubmitInfo);
 
     [[maybe_unused]] [[nodiscard]] const VkDevice vkGetDevice();
+
+    void resetUniformObjectType(void*);
+
+    [[maybe_unused]] [[nodiscard]] uint32_t vkGetFrameBufferCount();
+
+    [[maybe_unused]] [[nodiscard]] uint32_t vkGetCurrentFrame();
 
     void vkDestroyContext();
 }

@@ -2,18 +2,24 @@
 #include <LunaLuxWindowLib/Window.h>
 #include <stdexcept>
 #include <fstream>
-#include <array>
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <chrono>
 #include "VulkanLib.h"
 #include "VulkanLibRenderComands.h"
 
-struct vec2 {float x,y;};
-
-struct vec3 {float x,y,z;};
+struct UniformBufferObject
+{
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+};
 
 struct Vertex
 {
-    vec3 color;
-    vec2 pos;
+    glm::vec2 pos;
+    glm::vec3 color;
 public:
     static VkVertexInputBindingDescription getBindingDescription()
     {
@@ -29,10 +35,10 @@ public:
 VkPipeline Graphic_pipeline;
 VkPipelineLayout pipeline_Layout;
 const std::vector<Vertex> vertices = {
-        {1.0f, 1.0f, 1.0f,-0.5f, -0.5f},
-        {0.0f, 1.0f, 1.0f,0.5f, -0.5f},
-        {0.0f, 0.0f, 1.0f,0.5f, 0.5f},
-        {0.0f, 0.0f, 0.0f,-0.5f, 0.5f}
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
 };
 
 const std::vector<uint16_t> indices = {
@@ -54,14 +60,30 @@ static std::vector<char> readFile(const std::string& filename)
     return buffer;
 }
 
-void createPipeLine(LunaLuxWindowLib::Window* window);
 
+
+void createPipeLine(LunaLuxWindowLib::Window* window);
+VkDescriptorSetLayout descriptorSetLayout;
 int main()
 {
-    VkFence fence;
+
     auto* window = new LunaLuxWindowLib::Window();
     window->Open("Vulkan Library Test 2",NULL,NULL);
-    vkCreateContext(false,window);
+    auto[_width_,_height_] = window->GetWindowSize();
+    UniformBufferObject ubo{};
+    {
+        static auto startTime = std::chrono::high_resolution_clock::now();
+
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.proj = glm::perspective(glm::radians(45.0f), ((float)_width_ / (float) _height_), 0.1f, 10.0f);
+        ubo.proj[1][1] *= -1;
+    }
+    VkFence fence;
+    vkCreateContext(false,window,(void*)&ubo);
 
     VkCommandPool command_pool = vkGenCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
                                                        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -76,19 +98,67 @@ int main()
 
     VkSemaphore render_complete_semaphore = vkGenSemaphore();
 
-    createPipeLine(window);
-
     VkDeviceSize bufferSize_ = sizeof(vertices[0]) * vertices.size();
     VkBuffer vertexBuffer = {};
     VkDeviceMemory vertexBufferMemory = {};
-    vkGenBuffer((void*)vertices.data(),bufferSize_, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+    vkGenBuffer((void*)vertices.data(),bufferSize_, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
 
     VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
     VkBuffer indexBuffer = {};
     VkDeviceMemory indexBufferMemory = {};
-    vkGenBuffer((void*)indices.data(),bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+    vkGenBuffer((void*)indices.data(),bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.pImmutableSamplers = nullptr;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding;
+
+    if (vkCreateDescriptorSetLayout(vkGetDevice(), &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
+        throw std::runtime_error("failed to create descriptor set layout!");
+
+    VkDescriptorPool descriptorPool;
+    vkGenUniformDescriptorPool(descriptorPool,1,vkGetFrameBufferCount());
+
+    std::vector<VkDescriptorSetLayout> layouts(vkGetFrameBufferCount(), descriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(vkGetFrameBufferCount());
+    allocInfo.pSetLayouts = layouts.data();
+
+    std::vector<VkDescriptorSet> descriptorSets(vkGetFrameBufferCount());
+    if (vkAllocateDescriptorSets(vkGetDevice(), &allocInfo, descriptorSets.data()) != VK_SUCCESS)
+        throw std::runtime_error("failed to allocate descriptor sets!");
+
+    for (size_t i = 0; i < vkGetFrameBufferCount(); i++)
+    {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = vkGetUnifromBuffers()[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = descriptorSets[i];
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(vkGetDevice(), 1, &descriptorWrite, 0, nullptr);
+    }
+
+    createPipeLine(window);
 
     while (!window->ShouldClose())
     {
@@ -116,6 +186,8 @@ int main()
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(command_buffer,indexBuffer,0,VK_INDEX_TYPE_UINT16);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_Layout,
+                                0, 1,&descriptorSets[vkGetCurrentFrame()], 0, nullptr);
         vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(indices.size()), 1, 0, 0,0);
 
         vkCmdEndRenderPass(command_buffer);
@@ -133,10 +205,12 @@ int main()
         vkFrameSubmit({render_complete_semaphore}, submit_info);
     }
     vkQueueWaitIdle();
-    vkDestroyBuffer(vertexBuffer,vertexBufferMemory);
-    vkDestroyBuffer(indexBuffer,indexBufferMemory);
     vkDestroyPipeline(Graphic_pipeline);
     vkDestroyPipelineLayout(pipeline_Layout);
+    vkDestroyDescriptorPool(vkGetDevice(),descriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(vkGetDevice(),descriptorSetLayout, nullptr);
+    vkDestroyBuffer(vertexBuffer,vertexBufferMemory);
+    vkDestroyBuffer(indexBuffer,indexBufferMemory);
     vkDestroyFence(fence);
     vkDestroySemaphore(render_complete_semaphore);
     vkDestroyCommandPool(command_pool);
@@ -168,19 +242,17 @@ void createPipeLine(LunaLuxWindowLib::Window* window)
     attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
     attributeDescriptions[1].offset = offsetof(Vertex, color);
 
-
     vertexInputInfo.vertexBindingDescriptionCount = 1;
     vertexInputInfo.vertexAttributeDescriptionCount = 2;
     vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
     vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
-
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-    auto[graphicsPipelines_,pipelineLayout_] = vkGenDefaultPipeline(window,shaderStages,vertexInputInfo,inputAssembly);
+    auto[graphicsPipelines_,pipelineLayout_] = vkGenDefaultPipeline(window,shaderStages,vertexInputInfo,inputAssembly,1,&descriptorSetLayout);
     Graphic_pipeline = graphicsPipelines_;
     pipeline_Layout = pipelineLayout_;
 
