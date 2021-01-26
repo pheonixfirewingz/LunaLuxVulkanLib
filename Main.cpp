@@ -11,9 +11,9 @@
 
 struct UniformBufferObject
 {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
+        glm::mat4 model;
+        glm::mat4 view;
+        glm::mat4 proj;
 };
 
 struct Vertex
@@ -70,20 +70,9 @@ int main()
     auto* window = new LunaLuxWindowLib::Window();
     window->Open("Vulkan Library Test 2",NULL,NULL);
     auto[_width_,_height_] = window->GetWindowSize();
-    UniformBufferObject ubo{};
-    {
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), ((float)_width_ / (float) _height_), 0.1f, 10.0f);
-        ubo.proj[1][1] *= -1;
-    }
+    UniformBufferObject* ubo = new UniformBufferObject();
     VkFence fence;
-    vkCreateContext(false,window,(void*)&ubo);
+    vkCreateContext(true,window,(void*)ubo);
 
     VkCommandPool command_pool = vkGenCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
                                                        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -142,7 +131,7 @@ int main()
     for (size_t i = 0; i < vkGetFrameBufferCount(); i++)
     {
         VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = vkGetUnifromBuffers()[i];
+        bufferInfo.buffer = vkGetUnifromBuffers().at(i);
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
 
@@ -160,6 +149,7 @@ int main()
 
     createPipeLine(window);
 
+
     while (!window->ShouldClose())
     {
         window->Update(30.0);
@@ -169,6 +159,19 @@ int main()
             vkDestroyPipelineLayout(pipeline_Layout);
             createPipeLine(window);
         }
+
+        static auto startTime = std::chrono::high_resolution_clock::now();
+
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+        ubo->model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo->view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo->proj = glm::perspective(glm::radians(45.0f), ((float)_width_ / (float) _height_), 0.1f, 10.0f);
+        ubo->proj[1][1] *= -1;
+
+        vkBufferUpdateData((void*)ubo,vkGetUniformBufferMemory(vkGetCurrentFrame()), sizeof(ubo));
+
         VkCommandBufferBeginInfo command_buffer_begin_info{};
         command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;

@@ -192,9 +192,14 @@ namespace LunaLuxVulkanLib
         return context->getSwapChain()->getImageCount();
     }
 
-    void resetUniformObjectType(void * type)
+    void vkResetUniformObjectType(void * type)
     {
         uniformBuffers->reset(context->getSwapChain(),type);
+    }
+
+    VkDeviceMemory vkGetUniformBufferMemory(int32_t frame)
+    {
+        return uniformBuffers->getUniformMemorys()[frame];
     }
 
     VkCommandPool vkGenCommandPool(VkCommandPoolCreateFlags flags)
@@ -296,7 +301,7 @@ namespace LunaLuxVulkanLib
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizer.lineWidth = 1.0f;
         rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterizer.depthBiasEnable = VK_FALSE;
 
         VkPipelineMultisampleStateCreateInfo multisampling{};

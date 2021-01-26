@@ -45,6 +45,7 @@ namespace LunaLuxVulkanLib
     //-----------------------------------------------------------------------------------------------------------------
     void vkGenBuffer(void* data_in, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
                      VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+    [[maybe_unused]] VkDeviceMemory vkGetUniformBufferMemory(int32_t);
     //this best used for updating your uniform shader buffer data;
     void vkBufferUpdateData(void * data_in, VkDeviceMemory BufferMemory,uint64_t size);
     //retrieves internal uniform buffers

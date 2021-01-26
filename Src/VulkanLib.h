@@ -18,7 +18,7 @@ namespace LunaLuxVulkanLib
 
     [[maybe_unused]] [[nodiscard]] const VkDevice vkGetDevice();
 
-    void resetUniformObjectType(void*);
+    void vkResetUniformObjectType(void*);
 
     [[maybe_unused]] [[nodiscard]] uint32_t vkGetFrameBufferCount();
 
