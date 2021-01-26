@@ -16,9 +16,9 @@ namespace LunaLuxVulkanLib
 
     void vkFrameSubmit(std::vector<VkSemaphore>,VkSubmitInfo);
 
-    [[maybe_unused]] [[nodiscard]] const VkDevice vkGetDevice();
+    [[maybe_unused]] [[nodiscard]] VkDevice vkGetDevice();
 
-    void vkResetUniformObjectType(void*);
+    [[maybe_unused]] void vkResetUniformObjectType(void*);
 
     [[maybe_unused]] [[nodiscard]] uint32_t vkGetFrameBufferCount();
 

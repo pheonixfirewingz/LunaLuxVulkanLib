@@ -89,14 +89,9 @@ namespace LunaLuxVulkanLib
         Destroy();
     }
 
-    const VkSwapchainKHR SwapChain::getSwapchain() const
+    VkSwapchainKHR SwapChain::getSwapchain() const
     {
         return swapchain;
-    }
-
-    VkPresentModeKHR SwapChain::getPresentMode() const
-    {
-        return present_mode;
     }
 
     uint32_t SwapChain::getImageCount() const

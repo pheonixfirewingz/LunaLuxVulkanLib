@@ -46,17 +46,17 @@ namespace LunaLuxVulkanLib
         vkDestroySurfaceKHR(instance,surface, nullptr);
     }
 
-    const VkSurfaceKHR Surface::getSurface() const
+    VkSurfaceKHR Surface::getSurface() const
     {
         return surface;
     }
 
-    const VkSurfaceCapabilitiesKHR Surface::getSurfaceCapabilities() const
+    VkSurfaceCapabilitiesKHR Surface::getSurfaceCapabilities() const
     {
         return surfaceCapabilities;
     }
 
-    const VkSurfaceFormatKHR Surface::getSurfaceFormat() const
+    VkSurfaceFormatKHR Surface::getSurfaceFormat() const
     {
         return surfaceFormat;
     }

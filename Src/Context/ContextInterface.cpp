@@ -40,11 +40,6 @@ namespace LunaLuxVulkanLib
         delete instance;
     }
 
-    Instance *ContextInterface::getInstance() const
-    {
-        return instance;
-    }
-
     Device *ContextInterface::getDevice() const
     {
         return device;

@@ -27,9 +27,7 @@ namespace LunaLuxVulkanLib
         void reset(Surface* surface,uint32_t width,uint32_t height);
         ~SwapChain();
 
-        const VkSwapchainKHR getSwapchain() const;
-
-        VkPresentModeKHR getPresentMode() const;
+        VkSwapchainKHR getSwapchain() const;
 
         uint32_t getImageCount() const;
 

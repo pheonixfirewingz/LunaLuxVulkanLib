@@ -73,12 +73,12 @@ namespace LunaLuxVulkanLib
         Destroy();
     }
 
-    const std::vector<VkBuffer> UniformBuffers::getUniformBuffers() const
+    std::vector<VkBuffer> UniformBuffers::getUniformBuffers() const
     {
         return uniformBuffers;
     }
 
-    const std::vector<VkDeviceMemory> UniformBuffers::getUniformMemorys() const
+    std::vector<VkDeviceMemory> UniformBuffers::getUniformMemorys() const
     {
         return uniformMemorys;
     }

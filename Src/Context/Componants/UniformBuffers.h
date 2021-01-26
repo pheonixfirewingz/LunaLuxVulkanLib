@@ -22,9 +22,9 @@ namespace LunaLuxVulkanLib
         void reset(SwapChain* swapChain,void* data_in);
         ~UniformBuffers();
 
-        const std::vector<VkBuffer> getUniformBuffers() const;
+        std::vector<VkBuffer> getUniformBuffers() const;
 
-        const std::vector<VkDeviceMemory> getUniformMemorys() const;
+        std::vector<VkDeviceMemory> getUniformMemorys() const;
     };
 };
 #endif //GITIGNORE_UNIFORMBUFFERS_H

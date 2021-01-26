@@ -3,8 +3,8 @@
 #include <stdexcept>
 #include <fstream>
 #define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include <GLM/glm.hpp>
+#include <GLM/gtc/matrix_transform.hpp>
 #include <chrono>
 #include "VulkanLib.h"
 #include "VulkanLibRenderComands.h"
@@ -34,14 +34,14 @@ public:
 
 VkPipeline Graphic_pipeline;
 VkPipelineLayout pipeline_Layout;
-const std::vector<Vertex> vertices = {
+const static std::vector<Vertex> vertices = {
         {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
         {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
         {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
         {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
 };
 
-const std::vector<uint16_t> indices = {
+const static std::vector<uint16_t> indices = {
         0, 1, 2, 2, 3, 0
 };
 static std::vector<char> readFile(const std::string& filename)
@@ -70,9 +70,9 @@ int main()
     auto* window = new LunaLuxWindowLib::Window();
     window->Open("Vulkan Library Test 2",NULL,NULL);
     auto[_width_,_height_] = window->GetWindowSize();
-    UniformBufferObject* ubo = new UniformBufferObject();
+    auto* ubo = new UniformBufferObject();
     VkFence fence;
-    vkCreateContext(true,window,(void*)ubo);
+    vkCreateContext(false,window,(void*)ubo);
 
     VkCommandPool command_pool = vkGenCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
                                                        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -170,7 +170,7 @@ int main()
         ubo->proj = glm::perspective(glm::radians(45.0f), ((float)_width_ / (float) _height_), 0.1f, 10.0f);
         ubo->proj[1][1] *= -1;
 
-        vkBufferUpdateData((void*)ubo,vkGetUniformBufferMemory(vkGetCurrentFrame()), sizeof(ubo));
+        vkBufferUpdateData((void*)ubo,vkGetUniformBufferMemory(vkGetCurrentFrame()), sizeof(UniformBufferObject));
 
         VkCommandBufferBeginInfo command_buffer_begin_info{};
         command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

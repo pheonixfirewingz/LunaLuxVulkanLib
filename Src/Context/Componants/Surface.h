@@ -21,11 +21,11 @@ namespace LunaLuxVulkanLib
         Surface(VkInstance,Device*,LunaLuxWindowLib::Window*);
         ~Surface();
 
-        const VkSurfaceKHR getSurface() const;
+        VkSurfaceKHR getSurface() const;
 
-        const VkSurfaceCapabilitiesKHR getSurfaceCapabilities() const;
+        VkSurfaceCapabilitiesKHR getSurfaceCapabilities() const;
 
-        const VkSurfaceFormatKHR getSurfaceFormat() const;
+        VkSurfaceFormatKHR getSurfaceFormat() const;
     };
 };
 #endif //GITIGNORE_SURFACE_H

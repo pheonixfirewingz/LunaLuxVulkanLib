@@ -62,34 +62,81 @@ namespace LunaLuxVulkanLib
         vkCreateDevice(p_device, &deviceCreateInfo, nullptr, &device);
     }
 
-    Device::~Device()
-    {
-        vkDestroyDevice(device, nullptr);
-        p_device = nullptr;
-    }
-
-    uint32_t Device::findGpuMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+    uint32_t Device::findGpuMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags)
     {
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(p_device, &memProperties);
 
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) if ((typeFilter & (1 << i)) &&
-        (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-            return i;
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & flags) == flags)
+                return i;
 
         throw std::runtime_error("failed to find suitable memory type!");
+    }
+
+    [[maybe_unused]] VkSampleCountFlagBits Device::getMaxUsableSampleCount() const
+    {
+        VkSampleCountFlags counts = properties.limits.framebufferColorSampleCounts &
+                                    properties.limits.framebufferDepthSampleCounts;
+
+        if (counts & VK_SAMPLE_COUNT_64_BIT) return VK_SAMPLE_COUNT_64_BIT;
+        else if (counts & VK_SAMPLE_COUNT_32_BIT) return VK_SAMPLE_COUNT_32_BIT;
+        else if (counts & VK_SAMPLE_COUNT_16_BIT) return VK_SAMPLE_COUNT_16_BIT;
+        else if (counts & VK_SAMPLE_COUNT_8_BIT) return VK_SAMPLE_COUNT_8_BIT;
+        else if (counts & VK_SAMPLE_COUNT_4_BIT) return VK_SAMPLE_COUNT_4_BIT;
+        else if (counts & VK_SAMPLE_COUNT_2_BIT) return VK_SAMPLE_COUNT_2_BIT;
+        else return VK_SAMPLE_COUNT_1_BIT;
     }
 
     VkPhysicalDevice Device::findRightDevice(VkInstance instance)
     {
         uint32_t count = 0;
-        VkPhysicalDevice* pDevice;
+
+        std::vector<VkPhysicalDevice> pDevice;
         vkEnumeratePhysicalDevices(instance, &count, nullptr);
-        pDevice = new VkPhysicalDevice[count];
-        vkEnumeratePhysicalDevices(instance, &count, pDevice);
+        pDevice.resize(count);
+        vkEnumeratePhysicalDevices(instance, &count, pDevice.data());
+        //optimization for non multi gpu devices
         if (count == 1)return pDevice[0];
-        //TODO: add multi gpu support
-        else throw std::runtime_error("multi gpu support has not been implemented");
+
+        std::vector<int> score(count);
+        {
+            int loop = 0;
+            for (VkPhysicalDevice physicalDevice:pDevice)
+            {
+                VkPhysicalDeviceProperties deviceProperties;
+                VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
+                vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+                vkGetPhysicalDeviceMemoryProperties(physicalDevice, &deviceMemoryProperties);
+                switch (deviceProperties.deviceType)
+                {
+                    case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:score.at(loop) += 1;
+                        break;
+                    case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:score.at(loop) += 5;
+                    default:score.at(loop) -= 5;
+                }
+
+                score.at(loop) = +(deviceMemoryProperties.memoryHeapCount + deviceMemoryProperties.memoryTypeCount);
+                loop++;
+            }
+        }
+        int high_score = 0,high_score_at = 0,loop = 0;
+        for(int i:score)
+        {
+            if (i > high_score)
+            {
+                high_score = i;
+                high_score_at = loop;
+            }
+            loop++;
+        }
+        return pDevice[high_score_at];
+    }
+
+    Device::~Device()
+    {
+        vkDestroyDevice(device, nullptr);
+        p_device = nullptr;
     }
 
     VkPhysicalDevice Device::getPDev()
@@ -102,12 +149,12 @@ namespace LunaLuxVulkanLib
         return device;
     }
 
-    const VkPhysicalDeviceProperties Device::getProperties() const
+    [[maybe_unused]] VkPhysicalDeviceProperties Device::getProperties() const
     {
         return properties;
     }
 
-    const VkPhysicalDeviceFeatures Device::getDeviceFeatures() const
+    [[maybe_unused]] VkPhysicalDeviceFeatures Device::getDeviceFeatures() const
     {
         return deviceFeatures;
     }

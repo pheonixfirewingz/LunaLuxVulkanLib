@@ -4,7 +4,6 @@
 
 #include "Debug.h"
 //TODO: write documentation
-#include <vulkan/vulkan_core.h>
 #include <cstdio>
 
 namespace LunaLuxVulkanLib
@@ -14,8 +13,8 @@ namespace LunaLuxVulkanLib
     PFN_vkDestroyDebugReportCallbackEXT lle_vkDestroyDebugReportCallback = nullptr;
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags,VkDebugReportObjectTypeEXT type, uint64_t src,
-                                             size_t location,int32_t code,const char * layer,const char * msg,void * user_data)
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback([[maybe_unused]]VkDebugReportFlagsEXT flags,[[maybe_unused]]VkDebugReportObjectTypeEXT type, [[maybe_unused]]uint64_t src,
+                                             [[maybe_unused]]size_t location,[[maybe_unused]]int32_t code,const char * layer,const char * msg,[[maybe_unused]]void * user_data)
 {
     if(flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) return false;
     printf("LunaLuxVulkanLib_debugCallback layer fired: %s\n",layer);

@@ -80,7 +80,7 @@ namespace LunaLuxVulkanLib
         unifrom_type = uniform_type_in;
     }
 
-    const VkDevice vkGetDevice()
+    VkDevice vkGetDevice()
     {
         return context->getDevice()->getDev();
     }
@@ -192,7 +192,7 @@ namespace LunaLuxVulkanLib
         return context->getSwapChain()->getImageCount();
     }
 
-    void vkResetUniformObjectType(void * type)
+    [[maybe_unused]] void vkResetUniformObjectType(void * type)
     {
         uniformBuffers->reset(context->getSwapChain(),type);
     }
@@ -263,17 +263,18 @@ namespace LunaLuxVulkanLib
     }
 
     void vkDestroyShaderModule(VkShaderModule module)
+
     {
         vkDestroyShaderModule(context->getDevice()->getDev(),module, nullptr);
     }
 
-    std::tuple<VkPipeline,VkPipelineLayout> vkGenDefaultPipeline(LunaLuxWindowLib::Window* window,VkPipelineShaderStageCreateInfo shaderStages[],
+    std::tuple<VkPipeline,VkPipelineLayout> vkGenDefaultPipeline(LunaLuxWindowLib::Window* in_window,VkPipelineShaderStageCreateInfo shaderStages[],
                                     VkPipelineVertexInputStateCreateInfo vertexInputInfo,VkPipelineInputAssemblyStateCreateInfo inputAssembly,
                                     uint32_t layoutCount,VkDescriptorSetLayout* descriptorSetLayout)
     {
         VkPipeline pipeline = nullptr;
         VkPipelineLayout pipelineLayout = {};
-        auto[_width_,_height_] = window->GetWindowSize();
+        auto[_width_,_height_] = in_window->GetWindowSize();
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;

@@ -29,7 +29,7 @@ namespace LunaLuxVulkanLib
 
         VkFormat getDepthFormat() const;
 
-        const VkImageView getDepthImageView() const;
+        VkImageView getDepthImageView() const;
 
         bool isStencilAvailable() const;
     };

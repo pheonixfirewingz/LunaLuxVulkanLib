@@ -54,7 +54,7 @@ namespace LunaLuxVulkanLib
     }
 
 
-    const VkImageView DepthHandler::getDepthImageView() const
+    VkImageView DepthHandler::getDepthImageView() const
     {
         return depthImageView;
     }

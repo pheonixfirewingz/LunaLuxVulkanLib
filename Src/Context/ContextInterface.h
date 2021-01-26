@@ -30,8 +30,6 @@ namespace LunaLuxVulkanLib
         void reset(uint32_t width,uint32_t height);
         void destroyContext(bool);
 
-        Instance *getInstance() const;
-
         Device *getDevice() const;
 
         Surface *getSurface() const;
